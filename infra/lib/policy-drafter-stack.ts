@@ -97,6 +97,9 @@ export class PolicyDrafterStack extends Stack {
       assignPublicIp: false,
       vpcSubnets: { subnetType: SubnetType.PRIVATE_WITH_EGRESS },
       circuitBreaker: { rollback: true },
+      // Importing CrewAI and LiteLLM is slow on a small task. Without a grace period the load
+      // balancer can fail the first health checks, and the circuit breaker rolls the deploy back.
+      healthCheckGracePeriod: Duration.seconds(120),
     });
 
     const loadBalancer = new ApplicationLoadBalancer(this, "LoadBalancer", {

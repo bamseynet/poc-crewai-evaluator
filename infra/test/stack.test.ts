@@ -137,6 +137,7 @@ describe("network path", () => {
 
   it("runs exactly one task, because runs are held in memory", () => {
     template.hasResourceProperties("AWS::ECS::Service", { DesiredCount: 1 });
+    template.hasResourceProperties("AWS::ECS::Service", { HealthCheckGracePeriodSeconds: 120 });
   });
 
   it("reaches the load balancer through a CloudFront VPC origin", () => {

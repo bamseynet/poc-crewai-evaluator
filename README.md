@@ -355,6 +355,9 @@ Found in review and deliberately left for later; none changes the result on norm
 - **API/UI:** shutdown ends open event streams without a terminal event and does not stop in-flight workers; a client that reconnects mid-phase misses the live tokens already sent; an invalid `Last-Event-ID` header returns 422 rather than replaying from the start; the UI has no retry if the API is down at page load, and a malformed event payload shows as a dropped connection.
 - **Auth:** with `LLM_MODE=bedrock` and no `API_ACCESS_TOKEN` the API only logs a warning. Always set a token when the API is reachable from a network.
 - **Evaluator retry** keeps the first reading when both score the same number of criteria, even if the retry was stricter.
+- **Infra is never deployed.** `cdk synth` and the stack tests pass, but behaviours that need a real account are unverified: the CloudFront-to-ALB path through the managed prefix list (about 55 security-group rules, close to the default quota), and first-start timing. `GEOGRAPHIC_PROFILE` accepts `us|eu|au|jp|ca` inference-profile prefixes only, so `apac.`, `global.` and `us-gov.` profiles are rejected at synth time.
+- **Graceful shutdown** waits for in-flight runs; ECS sends SIGKILL after its stop timeout.
+- **A shared access token** is the only authentication. There is no per-user identity, quota or audit trail.
 
 ## Licence
 
