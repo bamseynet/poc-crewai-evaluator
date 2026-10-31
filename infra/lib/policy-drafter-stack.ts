@@ -143,6 +143,8 @@ export class PolicyDrafterStack extends Stack {
         resources: AwsCustomResourcePolicy.ANY_RESOURCE,
       }),
     });
+    // AWS documents the origin-facing managed prefix list as a supported way to allow a CloudFront
+    // VPC origin ("Restrict access with VPC origins", Security Group Configuration, Option 1).
     loadBalancer.connections.allowFrom(
       Peer.prefixList(prefixList.getResponseField("PrefixLists.0.PrefixListId")),
       Port.tcp(80),

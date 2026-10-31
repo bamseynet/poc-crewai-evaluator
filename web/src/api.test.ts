@@ -88,6 +88,19 @@ describe("followRun", () => {
     expect(fetchMock).toHaveBeenCalledOnce();
   });
 
+  it("keeps following through a gateway error from a proxy", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(new Response("Bad gateway", { status: 502 }))
+      .mockResolvedValueOnce(streamResponse(sse([[1, finished]])));
+    vi.stubGlobal("fetch", fetchMock);
+    const events: ProgressEvent[] = [];
+
+    await follow((event) => events.push(event));
+
+    expect(events).toEqual([finished]);
+  });
+
   it("sends the access token", async () => {
     const fetchMock = vi.fn().mockResolvedValue(streamResponse(sse([[1, finished]])));
     vi.stubGlobal("fetch", fetchMock);
