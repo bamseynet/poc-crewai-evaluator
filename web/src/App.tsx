@@ -57,6 +57,7 @@ export function App() {
       setStarting(true);
       try {
         const runId = await createRun(request, token);
+        if (controller.signal.aborted) return;
         await followRun(runId, {
           token,
           signal: controller.signal,
@@ -70,8 +71,11 @@ export function App() {
           setError(reason instanceof Error ? reason.message : String(reason));
         }
       } finally {
-        setStarting(false);
-        setReconnecting(false);
+        // A newer run may have replaced this one; it owns these flags now.
+        if (stream.current === controller) {
+          setStarting(false);
+          setReconnecting(false);
+        }
       }
     },
     [token],

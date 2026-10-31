@@ -31,7 +31,8 @@ function download(run: RunView) {
   link.href = url;
   link.download = exportFilename(run);
   link.click();
-  URL.revokeObjectURL(url);
+  // Some browsers start the download asynchronously, so the URL must outlive the click.
+  setTimeout(() => URL.revokeObjectURL(url), 10_000);
 }
 
 export function OutcomeBanner({ run }: { run: RunView }) {

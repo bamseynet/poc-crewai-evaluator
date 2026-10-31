@@ -13,7 +13,8 @@ export class SseParser {
   private buffer = "";
 
   feed(chunk: string): SseMessage[] {
-    this.buffer += chunk.replaceAll("\r\n", "\n");
+    // Normalise the whole buffer: a CRLF can be split across two network chunks.
+    this.buffer = (this.buffer + chunk).replaceAll("\r\n", "\n");
     const blocks = this.buffer.split("\n\n");
     this.buffer = blocks.pop() ?? "";
     return blocks.flatMap((block) => {

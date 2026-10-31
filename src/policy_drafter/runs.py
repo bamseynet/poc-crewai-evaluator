@@ -83,7 +83,11 @@ class Run:
         with self._lock:
             subscribers = list(self._subscribers)
         for loop, wake in subscribers:
-            loop.call_soon_threadsafe(wake.set)
+            try:
+                loop.call_soon_threadsafe(wake.set)
+            except RuntimeError:
+                # The subscriber's event loop has closed. That must not fail the run's worker.
+                logger.debug("Dropped a wake-up for a closed event loop")
 
 
 class RunManager:
@@ -116,6 +120,11 @@ class RunManager:
 
     def shutdown(self) -> None:
         self._executor.shutdown(wait=False, cancel_futures=True)
+        with self._lock:
+            runs = list(self._runs.values())
+        # Release open event streams, or the server could not finish shutting down.
+        for run in runs:
+            run.finish()
 
     def _execute(self, run: Run, config: RunConfig) -> None:
         try:

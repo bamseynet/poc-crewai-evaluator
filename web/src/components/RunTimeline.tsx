@@ -63,8 +63,8 @@ function IterationCard({ iteration, run }: { iteration: IterationView; run: RunV
           </p>
           {iteration.evaluation.warnings.length > 0 && (
             <ul className="warnings">
-              {iteration.evaluation.warnings.map((warning) => (
-                <li key={warning}>{warning}</li>
+              {iteration.evaluation.warnings.map((warning, index) => (
+                <li key={`${index}-${warning}`}>{warning}</li>
               ))}
             </ul>
           )}
@@ -129,6 +129,7 @@ function verdict(
   finished: boolean,
 ): string {
   const scores = iteration.evaluation?.scores ?? [];
+  if (scores.length === 0) return "The evaluator's reply contained no usable scores.";
   const summary = `${scores.length - failing} of ${scores.length} criteria passed`;
   if (failing === 0) return `${summary}.`;
   if (isLast && finished) return `${summary}. The loop stopped here.`;

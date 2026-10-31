@@ -17,6 +17,13 @@ describe("SseParser", () => {
     expect(parser.feed("\n")).toEqual([{ id: 1, data: '{"a":1}' }]);
   });
 
+  it("handles a CRLF split across two chunks", () => {
+    const parser = new SseParser();
+
+    expect(parser.feed("id: 1\r\ndata: a\r")).toEqual([]);
+    expect(parser.feed("\n\r\n")).toEqual([{ id: 1, data: "a" }]);
+  });
+
   it("returns several messages from one chunk", () => {
     const parser = new SseParser();
 

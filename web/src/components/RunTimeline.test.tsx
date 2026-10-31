@@ -53,6 +53,14 @@ describe("RunTimeline", () => {
     expect(screen.queryByText(/Feedback sent/)).not.toBeInTheDocument();
   });
 
+  it("does not claim '0 of 0 criteria passed' when nothing could be scored", () => {
+    const unscored = { scores: [], parse_ok: false, warnings: ["a", "a"], all_passed: false };
+    renderAfter([started, ...iterationEvents(1, "One", unscored)]);
+
+    expect(screen.queryByText(/0 of 0/)).not.toBeInTheDocument();
+    expect(screen.getByText(/no usable scores/)).toBeInTheDocument();
+  });
+
   it("reports an evaluator retry", () => {
     renderAfter([
       started,
