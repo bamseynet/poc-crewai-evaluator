@@ -61,7 +61,10 @@ export function App() {
         await followRun(runId, {
           token,
           signal: controller.signal,
-          onEvent: (event) => setRun((current) => runReducer(current, event)),
+          onEvent: (event) => {
+            // Events of a superseded run must not leak into the run that replaced it.
+            if (stream.current === controller) setRun((current) => runReducer(current, event));
+          },
           onConnectionChange: (connected) => setReconnecting(!connected),
         });
       } catch (reason) {

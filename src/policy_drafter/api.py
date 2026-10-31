@@ -48,8 +48,10 @@ def create_app(
     app.state.runs = runs
 
     def require_token(authorization: Annotated[str | None, Header()] = None) -> None:
-        if token and not secrets.compare_digest(
-            (authorization or "").encode(), f"Bearer {token}".encode()
+        scheme, _, presented = (authorization or "").partition(" ")
+        if token and not (
+            scheme.lower() == "bearer"
+            and secrets.compare_digest(presented.encode(), token.encode())
         ):
             raise HTTPException(status.HTTP_401_UNAUTHORIZED, "A valid access token is required.")
 

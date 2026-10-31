@@ -52,7 +52,7 @@ function IterationCard({ iteration, run }: { iteration: IterationView; run: RunV
       )}
       {iteration.evaluationRetried && (
         <p className="note">
-          The evaluator's reply could not be parsed, so it was asked to score the draft again.
+          The evaluator's reply was not usable, so it was asked to score the draft again.
         </p>
       )}
 
@@ -129,7 +129,9 @@ function verdict(
   finished: boolean,
 ): string {
   const scores = iteration.evaluation?.scores ?? [];
-  if (scores.length === 0) return "The evaluator's reply contained no usable scores.";
+  if (scores.every((score) => score.score === null)) {
+    return "The evaluator's reply contained no usable scores.";
+  }
   const summary = `${scores.length - failing} of ${scores.length} criteria passed`;
   if (failing === 0) return `${summary}.`;
   if (isLast && finished) return `${summary}. The loop stopped here.`;

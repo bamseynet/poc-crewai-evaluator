@@ -23,7 +23,7 @@ _FENCE = re.compile(r"```[a-zA-Z]*\s*(.*?)```", re.DOTALL)
 _FRACTION = re.compile(
     r"^(?:score\s*[:=]?\s*)?(-?\d+(?:\.\d+)?)\s*(?:/|out of)\s*(\d+(?:\.\d+)?)$", re.IGNORECASE
 )
-_PERCENT = re.compile(r"^(?:score\s*[:=]?\s*)?(-?\d+(?:\.\d+)?)\s*%$")
+_PERCENT = re.compile(r"^(?:score\s*[:=]?\s*)?(-?\d+(?:\.\d+)?)\s*%$", re.IGNORECASE)
 _PLAIN = re.compile(r"^(?:score\s*[:=]?\s*)?(-?\d+(?:\.\d+)?)$", re.IGNORECASE)
 
 _CONTAINER_KEYS = ("criteria", "scores", "evaluation", "evaluations", "results", "rubric")

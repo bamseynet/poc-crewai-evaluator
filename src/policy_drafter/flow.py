@@ -47,7 +47,6 @@ logger = logging.getLogger(__name__)
 _REVISE: Final = "revise"
 _STOP: Final = "stop"
 _EVALUATOR_ATTEMPTS = 2
-_MAX_ERROR_CHARS = 500
 _PHASE_BY_ROLE: dict[str, Phase] = {
     RESEARCHER_ROLE: "research",
     DRAFTER_ROLE: "draft",
@@ -207,7 +206,9 @@ class DraftingFlow(Flow[DraftingState]):
             # event sink) must not emit a second terminal event or rewrite the stop reason.
             return
         self.state.stop_reason = StopReason.ERROR
-        self.state.error = f"{type(error).__name__}: {error}"[:_MAX_ERROR_CHARS]
+        # The message can carry account ids or endpoints from the provider, and this reaches API
+        # clients, so only the class goes out. The full error is in the server log above.
+        self.state.error = _public_error(error)
         try:
             self._conclude()
         # The sink may be what failed (a closed stream); the outcome is already on the state.
@@ -249,6 +250,10 @@ class DraftingFlow(Flow[DraftingState]):
 
 def _scored(evaluation: Evaluation) -> int:
     return sum(1 for score in evaluation.scores if score.score is not None)
+
+
+def _public_error(error: Exception) -> str:
+    return f"The run failed with {type(error).__name__}. See the server log for details."
 
 
 def _clean_draft(raw: str) -> str:

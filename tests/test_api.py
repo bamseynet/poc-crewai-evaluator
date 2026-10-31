@@ -222,7 +222,8 @@ def test_llm_failure_ends_the_stream_with_an_error_stop_reason() -> None:
     last = events[-1][1]
     assert last["type"] == "run_finished"
     assert last["stop_reason"] == "error"
-    assert "Access denied" in last["error"]
+    assert "RuntimeError" in last["error"]
+    assert "Access denied" not in last["error"]
 
 
 def test_finished_runs_are_evicted_beyond_the_retention_limit() -> None:
@@ -263,6 +264,11 @@ class TestAccessToken:
     def test_rejects_bad_credentials(self, secured: TestClient, headers: dict[str, str]) -> None:
         assert secured.post("/api/runs", json=BODY, headers=headers).status_code == 401
         assert secured.get("/api/runs/any/events", headers=headers).status_code == 401
+
+    def test_the_bearer_scheme_is_case_insensitive(self, secured: TestClient) -> None:
+        headers = {"Authorization": "bearer s3cret"}
+
+        assert secured.post("/api/runs", json=BODY, headers=headers).status_code == 201
 
     def test_accepts_the_right_token(self, secured: TestClient) -> None:
         headers = {"Authorization": "Bearer s3cret"}

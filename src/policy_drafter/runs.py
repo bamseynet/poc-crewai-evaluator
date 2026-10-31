@@ -139,7 +139,10 @@ class RunManager:
                     iterations=0,
                     final_iteration=None,
                     final_draft=None,
-                    error=f"{type(error).__name__}: {error}",
+                    error=(
+                        f"The run could not start ({type(error).__name__}). "
+                        "See the server log for details."
+                    ),
                 )
             )
         finally:

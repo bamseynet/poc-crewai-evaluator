@@ -61,6 +61,13 @@ describe("RunTimeline", () => {
     expect(screen.getByText(/no usable scores/)).toBeInTheDocument();
   });
 
+  it("says so when every criterion came back unscored", () => {
+    renderAfter([started, ...iterationEvents(1, "One", evaluation(null, null))]);
+
+    expect(screen.getByText(/no usable scores/)).toBeInTheDocument();
+    expect(screen.queryByText(/goes back for revision/)).not.toBeInTheDocument();
+  });
+
   it("reports an evaluator retry", () => {
     renderAfter([
       started,
@@ -68,7 +75,7 @@ describe("RunTimeline", () => {
       { type: "evaluation_retried", iteration: 1, warnings: [] },
     ]);
 
-    expect(screen.getByText(/could not be parsed/)).toBeInTheDocument();
+    expect(screen.getByText(/was not usable/)).toBeInTheDocument();
   });
 
   it("renders an iteration per round of the loop", () => {

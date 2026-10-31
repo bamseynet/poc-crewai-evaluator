@@ -558,7 +558,8 @@ def test_llm_failure_is_recorded_as_a_stop_reason_rather_than_raised() -> None:
     state = run(llm, events=events)
 
     assert state.stop_reason is StopReason.ERROR
-    assert "Bedrock is throttling" in (state.error or "")
+    assert "RuntimeError" in (state.error or "")
+    assert "Bedrock is throttling" not in (state.error or "")  # may carry account details
     assert events[-1].type == "run_finished"
     assert events[-1].stop_reason is StopReason.ERROR
 
