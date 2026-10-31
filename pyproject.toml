@@ -37,6 +37,11 @@ packages = ["src/policy_drafter"]
 testpaths = ["tests"]
 addopts = "-ra --strict-markers"
 timeout = 60
+filterwarnings = [
+    # Raised inside CrewAI for options this project does not use.
+    "ignore::DeprecationWarning",
+    "ignore:A \\w+ callback cannot be saved in a checkpoint",
+]
 
 [tool.ruff]
 line-length = 100
@@ -45,7 +50,7 @@ src = ["src", "tests"]
 
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "B", "UP", "SIM", "RUF", "PL"]
-ignore = ["PLR0913", "PLR2004"]
+ignore = ["PLR0913", "PLR0917", "PLR2004"]
 
 [tool.mypy]
 python_version = "3.12"
