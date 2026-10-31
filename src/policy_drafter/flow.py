@@ -53,7 +53,7 @@ _PHASE_BY_ROLE: dict[str, Phase] = {
     DRAFTER_ROLE: "draft",
     EVALUATOR_ROLE: "evaluate",
 }
-_WRAPPING_FENCE = re.compile(r"^```([a-zA-Z]*)\n(.*)\n```$", re.DOTALL)
+_WRAPPING_FENCE = re.compile(r"^(`{3,})([a-zA-Z]*)[ \t]*\n(.*)\n\1$", re.DOTALL)
 
 
 def stop_reason_for(
@@ -128,6 +128,8 @@ class DraftingFlow(Flow[DraftingState]):
 
         state.research = result.tasks_output[0].raw
         state.draft = _clean_draft(result.raw)
+        if not state.draft:
+            raise ValueError("The drafter returned an empty draft.")
         self._emit(DraftCompleted(iteration=state.iteration, draft=state.draft))
 
     @listen(write_draft)
@@ -145,12 +147,14 @@ class DraftingFlow(Flow[DraftingState]):
                         self.llms, request=state.request, rubric=rubric, draft=state.draft
                     )
                 )
-            except Exception:
-                if evaluation is None:
-                    raise
-                # A failed retry must not throw away the reading already in hand.
-                logger.exception("Evaluator retry failed; keeping the earlier evaluation")
-                break
+            except Exception as error:
+                logger.exception("Evaluator call failed (attempt %d)", attempt)
+                if attempt == _EVALUATOR_ATTEMPTS:
+                    if evaluation is None:
+                        raise
+                    break  # keep the reading already in hand
+                self._emit(EvaluationRetried(iteration=state.iteration, warnings=[str(error)]))
+                continue
             latest = parse_evaluation(result.raw, rubric, state.threshold)
             # A retry must never replace a better reading with a worse one.
             if evaluation is None or _scored(latest) > _scored(evaluation):
@@ -244,7 +248,7 @@ def _clean_draft(raw: str) -> str:
     match = _WRAPPING_FENCE.match(text)
     if match is None:
         return text
-    language, body = match.groups()
+    _, language, body = match.groups()
     # A fence tagged markdown is a wrapper whatever it contains. An untagged one is only a
     # wrapper when no code block sits inside, as a document may open and close with its own.
     if language.lower() in {"markdown", "md"} or (not language and "\n```" not in body):

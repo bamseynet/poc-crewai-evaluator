@@ -197,8 +197,8 @@ def _entries(payload: Any, depth: int = 0) -> Iterator[tuple[str, Any, str]]:
         return
     if isinstance(payload, list):
         for item in payload:
-            if isinstance(item, dict) and (key := _first(item, _ID_KEYS)) is not None:
-                yield str(key), _first(item, _SCORE_KEYS), _feedback(item)
+            if isinstance(item, dict) and (key := _first_text(item, _ID_KEYS)) is not None:
+                yield key, _first(item, _SCORE_KEYS), _feedback(item)
         return
     if not isinstance(payload, dict):
         return
@@ -263,6 +263,13 @@ def _feedback(item: dict[str, Any]) -> str:
     if isinstance(value, list):
         value = "; ".join(str(part) for part in value)
     return str(value).strip()[:_MAX_FEEDBACK_CHARS]
+
+
+def _first_text(item: dict[str, Any], keys: tuple[str, ...]) -> str | None:
+    """The first non-blank string value, so a numeric "id": 1 cannot hide "criterion": "clarity"."""
+    return next(
+        (item[key] for key in keys if isinstance(item.get(key), str) and item[key].strip()), None
+    )
 
 
 def _first(item: dict[str, Any], keys: tuple[str, ...]) -> Any:

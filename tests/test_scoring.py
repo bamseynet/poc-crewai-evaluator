@@ -321,3 +321,16 @@ def test_a_wrapper_object_with_its_own_score_still_yields_its_criteria() -> None
     raw = json.dumps({"name": "Draft review", "score": 7, **CLEAN})
 
     assert scores(raw) == {"scope": 9, "roles": 5}
+
+
+def test_a_numeric_index_in_id_does_not_hide_the_criterion_name() -> None:
+    raw = json.dumps(
+        {
+            "criteria": [
+                {"id": 1, "criterion": "scope", "score": 8},
+                {"id": 2, "name": "roles", "score": 9},
+            ]
+        }
+    )
+
+    assert scores(raw) == {"scope": 8, "roles": 9}

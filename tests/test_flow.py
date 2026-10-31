@@ -401,6 +401,37 @@ def test_a_sink_that_emits_again_does_not_deadlock() -> None:
     assert done.wait(60)
 
 
+def test_a_transient_first_evaluator_failure_is_retried() -> None:
+    llm = ScriptedLLM.build(evaluator=[RuntimeError("throttled"), PASS])
+
+    state = run(llm)
+
+    assert state.stop_reason is StopReason.PASSED
+
+
+def test_an_empty_draft_is_an_error_not_something_to_evaluate() -> None:
+    llm = ScriptedLLM.build(drafter=["   "], evaluator=[PASS])
+
+    state = run(llm)
+
+    assert state.stop_reason is StopReason.ERROR
+    assert state.final_draft is None
+    assert len(llm.prompts_for(EVALUATOR_ROLE)) == 0
+
+
+@pytest.mark.parametrize(
+    "reply",
+    [
+        pytest.param("````markdown\n# Policy\n\nBody.\n````", id="four-backticks"),
+        pytest.param("```markdown \n# Policy\n\nBody.\n```", id="trailing-space"),
+    ],
+)
+def test_fence_wrapper_variants_are_removed(reply: str) -> None:
+    llm = ScriptedLLM.build(drafter=[reply], evaluator=[PASS])
+
+    assert run(llm).final_draft == "# Policy\n\nBody."
+
+
 def test_a_document_that_merely_starts_and_ends_with_code_blocks_is_left_alone() -> None:
     document = "```\nfirst\n```\n\nProse between.\n\n```\nlast\n```"
     llm = ScriptedLLM.build(drafter=[document], evaluator=[PASS])
