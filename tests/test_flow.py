@@ -354,6 +354,25 @@ def test_events_reach_the_sink_one_at_a_time() -> None:
     assert overlaps == 0
 
 
+def test_crlf_line_endings_do_not_defeat_fence_removal() -> None:
+    llm = ScriptedLLM.build(
+        drafter=["```markdown\r\n# Policy\r\n\r\nBody.\r\n```"], evaluator=[PASS]
+    )
+
+    assert run(llm).final_draft == "# Policy\n\nBody."
+
+
+def test_a_failed_evaluator_retry_keeps_the_earlier_reading() -> None:
+    partial = '{"criteria": [{"id": "plain_language", "score": 3, "feedback": "x"}]}'
+    llm = ScriptedLLM.build(evaluator=[partial, RuntimeError("throttled")])
+
+    state = run(llm, max_iterations=1)
+
+    assert state.stop_reason is StopReason.MAX_ITERATIONS
+    assert len(state.iterations) == 1
+    assert state.iterations[0].evaluation.scores[0].score == 3
+
+
 def test_a_document_that_merely_starts_and_ends_with_code_blocks_is_left_alone() -> None:
     document = "```\nfirst\n```\n\nProse between.\n\n```\nlast\n```"
     llm = ScriptedLLM.build(drafter=[document], evaluator=[PASS])

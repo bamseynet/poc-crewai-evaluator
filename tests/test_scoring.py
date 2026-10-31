@@ -294,3 +294,24 @@ def test_many_stray_fragments_do_not_exhaust_the_repair_budget() -> None:
     raw = " ".join(["[1] {x}"] * 20) + " " + broken
 
     assert scores(raw) == {"scope": 9, "roles": 5}
+
+
+def test_an_absurdly_large_integer_score_fails_closed_without_raising() -> None:
+    raw = (
+        '{"criteria": [{"id": "scope", "score": 1' + "0" * 400 + '}, {"id": "roles", "score": 9}]}'
+    )
+
+    scope, roles = parse_evaluation(raw, RUBRIC).scores
+
+    assert scope.score is None
+    assert roles.score == 9
+
+
+def test_a_single_bare_entry_is_read_as_one_criterion() -> None:
+    raw = json.dumps({"id": "scope", "score": 8, "feedback": "Fine."})
+
+    scope, roles = parse_evaluation(raw, RUBRIC).scores
+
+    assert scope.score == 8
+    assert scope.feedback == "Fine."
+    assert roles.score is None

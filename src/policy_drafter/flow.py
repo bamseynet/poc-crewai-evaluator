@@ -139,11 +139,18 @@ class DraftingFlow(Flow[DraftingState]):
 
         evaluation: Evaluation | None = None
         for attempt in range(1, _EVALUATOR_ATTEMPTS + 1):
-            result = kickoff(
-                build_evaluator_crew(
-                    self.llms, request=state.request, rubric=rubric, draft=state.draft
+            try:
+                result = kickoff(
+                    build_evaluator_crew(
+                        self.llms, request=state.request, rubric=rubric, draft=state.draft
+                    )
                 )
-            )
+            except Exception:
+                if evaluation is None:
+                    raise
+                # A failed retry must not throw away the reading already in hand.
+                logger.exception("Evaluator retry failed; keeping the earlier evaluation")
+                break
             latest = parse_evaluation(result.raw, rubric, state.threshold)
             # A retry must never replace a better reading with a worse one.
             if evaluation is None or _scored(latest) > _scored(evaluation):
@@ -233,7 +240,7 @@ def _scored(evaluation: Evaluation) -> int:
 
 def _clean_draft(raw: str) -> str:
     """Remove the code fence that models sometimes wrap a Markdown document in."""
-    text = raw.strip()
+    text = raw.replace("\r\n", "\n").strip()
     match = _WRAPPING_FENCE.match(text)
     if match is None:
         return text

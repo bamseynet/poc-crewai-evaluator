@@ -203,6 +203,12 @@ def _entries(payload: Any, depth: int = 0) -> Iterator[tuple[str, Any, str]]:
     if not isinstance(payload, dict):
         return
 
+    # A lone entry rather than a list of them: {"id": "clarity", "score": 8, ...}.
+    lone_key = _first(payload, _ID_KEYS)
+    if isinstance(lone_key, str) and _first(payload, _SCORE_KEYS) is not None:
+        yield lone_key, _first(payload, _SCORE_KEYS), _feedback(payload)
+        return
+
     for container in _CONTAINER_KEYS:
         if isinstance(payload.get(container), list | dict):
             yield from _entries(payload[container], depth + 1)
@@ -219,7 +225,10 @@ def _coerce_score(value: Any) -> float | None:
     if isinstance(value, bool):
         return None
     if isinstance(value, int | float):
-        return _bare(float(value))
+        try:
+            return _bare(float(value))
+        except OverflowError:  # an integer too large for a float is far off the scale
+            return None
     return _score_from_text(value.strip()) if isinstance(value, str) else None
 
 
