@@ -9,19 +9,25 @@ YAML rubric, criterion by criterion, with specific feedback. A CrewAI Flow feeds
 the next revision, until every criterion passes or the iteration budget runs out, and it records why
 it stopped.
 
-This branch contains the agent core. The API, web UI, infrastructure and full documentation follow
-in later pull requests.
+This branch adds the API and web UI to the agent core. Infrastructure and full documentation follow
+in the next pull request.
 
 ## Try it
 
-You need [uv](https://docs.astral.sh/uv/). No AWS account is required, because the offline fake LLM
-is the default.
+You need [uv](https://docs.astral.sh/uv/) and Node.js 22 or newer. No AWS account is required,
+because the offline fake LLM is the default.
 
 ```bash
-make install
+make dev     # API on :8000, UI on http://localhost:5173
+make check   # lint, type check, tests and build, all offline
+```
+
+Submit a request, watch each iteration stream, compare drafts side by side, follow the score
+history and export the final draft as Markdown. The same loop also runs without the UI:
+
+```bash
 uv run policy-drafter "Draft an acceptable-use policy for AI tools for a 500-person fintech" \
   --rubric regulatory_coverage --output policy.md
-make check   # lint, type check and tests, all offline
 ```
 
 ## Where to look
@@ -33,6 +39,8 @@ make check   # lint, type check and tests, all offline
 | [`src/policy_drafter/prompts.py`](src/policy_drafter/prompts.py) | What each role is told, including how feedback is fed back |
 | [`src/policy_drafter/scoring.py`](src/policy_drafter/scoring.py) | Parsing model output so that malformed scores fail closed |
 | [`src/policy_drafter/rubric_files/`](src/policy_drafter/rubric_files/) | The YAML rubrics |
+| [`src/policy_drafter/api.py`](src/policy_drafter/api.py) | The HTTP API and its event stream |
+| [`web/src/runState.ts`](web/src/runState.ts) | How the UI folds the event stream into what it shows |
 | [`tests/test_flow.py`](tests/test_flow.py) | The behaviour of the loop |
 
 ## Known limitations / hardening

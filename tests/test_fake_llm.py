@@ -35,6 +35,14 @@ def test_scores_never_regress_and_drafts_change_between_iterations() -> None:
             assert (after.score or 0) >= (before.score or 0)
 
 
+def test_revisions_reword_existing_text_as_well_as_adding_to_it() -> None:
+    """Otherwise the UI's diff would only ever show additions in the demo."""
+    state = run_drafting(RunConfig(request=REQUEST, rubric_id="regulatory_coverage"), fake_llms())
+
+    first, second, *_ = [record.draft.splitlines() for record in state.iterations]
+    assert set(first) - set(second)
+
+
 def test_impossible_threshold_reaches_max_iterations() -> None:
     state = run_drafting(
         RunConfig(request=REQUEST, rubric_id="clarity", max_iterations=2, threshold=10),

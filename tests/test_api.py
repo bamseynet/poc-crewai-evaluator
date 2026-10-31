@@ -166,10 +166,11 @@ def test_a_live_subscriber_is_woken_by_events_from_the_worker_thread() -> None:
         run.finish()
 
     async def collect() -> list[str]:
-        received = []
+        received: list[str] = []
         async for _, event in run.follow():
             received.append(event.type)
-            threading.Thread(target=finish_from_another_thread).start()
+            if len(received) == 1:
+                threading.Thread(target=finish_from_another_thread).start()
         return received
 
     assert asyncio.run(asyncio.wait_for(collect(), timeout=5)) == ["token", "draft_completed"]
