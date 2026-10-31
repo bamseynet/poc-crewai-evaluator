@@ -1,0 +1,17 @@
+.git
+.github
+.venv
+.claude
+.playwright-mcp
+.env
+.env.*
+**/node_modules
+**/__pycache__
+**/.mypy_cache
+**/.pytest_cache
+**/.ruff_cache
+infra
+tests
+web/dist
+Dockerfile
+Makefile

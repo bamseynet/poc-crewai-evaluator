@@ -1,5 +1,5 @@
 .DEFAULT_GOAL := help
-.PHONY: help install dev lint format typecheck test build check
+.PHONY: help install dev lint format typecheck test build synth deploy check
 
 API_PORT ?= 8000
 WEB_PORT ?= 5173
@@ -9,9 +9,10 @@ FAKE_LLM_DELAY_MS ?= 30
 help: ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  %-12s %s\n", $$1, $$2}'
 
-install: ## Install Python and web dependencies
+install: ## Install all dependencies
 	uv sync
 	npm --prefix web ci
+	npm --prefix infra ci
 
 # npm writes this file on install, so a reinstall only happens when the lockfile changes.
 web/node_modules/.package-lock.json: web/package-lock.json
@@ -28,6 +29,7 @@ lint: ## Lint and check formatting
 	uv run ruff check .
 	uv run ruff format --check .
 	npm --prefix web run lint
+	npm --prefix infra run lint
 
 format: ## Apply formatting and safe lint fixes
 	uv run ruff check --fix .
@@ -36,12 +38,20 @@ format: ## Apply formatting and safe lint fixes
 typecheck: ## Type check Python and TypeScript
 	uv run mypy
 	npm --prefix web run typecheck
+	npm --prefix infra run typecheck
 
 test: ## Run the tests, which are all offline
 	uv run pytest
 	npm --prefix web test
+	npm --prefix infra test
 
 build: ## Build the web UI
 	npm --prefix web run build
 
-check: lint typecheck test build ## Everything CI runs
+synth: ## Synthesize the CDK stack, which needs no AWS access
+	npm --prefix infra run synth
+
+deploy: ## Deploy to the current AWS account. Costs money. See the README first
+	npm --prefix infra run cdk -- deploy
+
+check: lint typecheck test build synth ## Everything CI runs
