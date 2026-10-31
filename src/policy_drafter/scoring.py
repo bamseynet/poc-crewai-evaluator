@@ -20,8 +20,10 @@ from policy_drafter.rubrics import Criterion, Rubric, normalise_key
 
 _OPENING = re.compile(r"[{\[](?=\s*(?:[\"'{\[\]}]|\w+\s*:))")
 _FENCE = re.compile(r"```[a-zA-Z]*\s*(.*?)```", re.DOTALL)
-_FRACTION = re.compile(r"^(-?\d+(?:\.\d+)?)\s*(?:/|out of)\s*(\d+(?:\.\d+)?)$", re.IGNORECASE)
-_PERCENT = re.compile(r"^(-?\d+(?:\.\d+)?)\s*%$")
+_FRACTION = re.compile(
+    r"^(?:score\s*[:=]?\s*)?(-?\d+(?:\.\d+)?)\s*(?:/|out of)\s*(\d+(?:\.\d+)?)$", re.IGNORECASE
+)
+_PERCENT = re.compile(r"^(?:score\s*[:=]?\s*)?(-?\d+(?:\.\d+)?)\s*%$")
 _PLAIN = re.compile(r"^(?:score\s*[:=]?\s*)?(-?\d+(?:\.\d+)?)$", re.IGNORECASE)
 
 _CONTAINER_KEYS = ("criteria", "scores", "evaluation", "evaluations", "results", "rubric")

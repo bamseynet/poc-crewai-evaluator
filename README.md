@@ -35,6 +35,19 @@ make check   # lint, type check and tests, all offline
 | [`src/policy_drafter/rubric_files/`](src/policy_drafter/rubric_files/) | The YAML rubrics |
 | [`tests/test_flow.py`](tests/test_flow.py) | The behaviour of the loop |
 
+## Known limitations / hardening
+
+Found in review and deliberately left for later; none changes the result on normal input.
+
+- **Score parsing is best-effort.** Unscored or ambiguous criteria fail closed, but a model that answers on another scale (0-1, 1-5) is read at face value and costs revisions.
+- **Adversarial evaluator replies** (thousands of nested brackets, many fences) can make parsing slow; repair input is capped, strict decodes are not.
+- **Fence stripping is a heuristic.** An untagged fence around a draft that is itself one code block, or fences of unequal length, are not told apart.
+- **`mean_score` counts an unscored criterion as 0**, which only matters when breaking ties between drafts.
+- **Evaluator retry has no backoff** and retries any exception, not just transient ones.
+- **A failed or empty draft ends the run**, keeping the best evaluated draft, instead of retrying the drafter.
+- **Prompt injection is mitigated, not solved.** Request, draft and feedback text cannot close the tags that frame them, but researcher notes reach the drafter unframed and a model can still be talked into following instructions inside user text. Treat the output as a draft for human review.
+- **Token streaming** relies on CrewAI dispatching events with the caller's context; it is tested against CrewAI 1.15.x only, and tokens are dropped silently if that changes.
+
 ## Licence
 
 [MIT](LICENSE)

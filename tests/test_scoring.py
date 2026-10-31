@@ -120,6 +120,8 @@ def test_accepts_alternative_shapes(payload: object) -> None:
         ("4/5", 8),
         ("80%", 8),
         ("Score: 6", 6),
+        ("Score: 7/10", 7),
+        ("score = 80%", 8),
         (-3, 0),
     ],
 )
