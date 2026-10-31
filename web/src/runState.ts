@@ -56,7 +56,10 @@ export function runReducer(run: RunView, event: ProgressEvent): RunView {
     case "phase_started":
       return update(run, event.iteration, () => ({ phase: event.phase, live: "" }));
     case "token":
-      return update(run, event.iteration, (iteration) => ({ live: iteration.live + event.text }));
+      // A token can arrive after the phase it belongs to has completed; it must not reappear.
+      return update(run, event.iteration, (iteration) =>
+        iteration.completedPhases.includes(event.phase) ? {} : { live: iteration.live + event.text },
+      );
     case "research_completed":
       return update(run, event.iteration, (iteration) => ({
         ...complete(iteration, "research"),

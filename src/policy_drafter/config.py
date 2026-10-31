@@ -3,7 +3,7 @@
 from pathlib import Path
 from typing import Any, Literal
 
-from pydantic import Field, SecretStr, field_validator
+from pydantic import Field, SecretStr, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 # Cross-Region inference profile ids from the Amazon Bedrock model cards:
@@ -33,4 +33,14 @@ class Settings(BaseSettings):
     def _blank_token_is_unset(cls, value: Any) -> Any:
         # `API_ACCESS_TOKEN=` in a copied .env is a blank value, not a token. Either way auth is
         # off, and create_app warns about that when real models are in use.
-        return None if isinstance(value, str) and not value.strip() else value
+        if isinstance(value, str):
+            # A secret read from a file or .env often ends in a newline that clients never send.
+            return value.strip() or None
+        return value
+
+    @model_validator(mode="after")
+    def _retention_covers_active_runs(self) -> "Settings":
+        # Otherwise a finished run is evicted at once and its own client gets a 404.
+        if self.max_retained_runs < self.max_concurrent_runs:
+            raise ValueError("MAX_RETAINED_RUNS must be at least MAX_CONCURRENT_RUNS")
+        return self

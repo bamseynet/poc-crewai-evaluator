@@ -39,4 +39,7 @@ def _bedrock_llm(model_id: str, region: str) -> LLM:
         stream=True,
         max_tokens=_MAX_OUTPUT_TOKENS,
         aws_region_name=region,
+        # CrewAI stops on "\nObservation:" for its tool-calling format. These agents have no tools,
+        # and a compliance document could contain that line, which would silently cut it short.
+        additional_drop_params=["stop"],
     )

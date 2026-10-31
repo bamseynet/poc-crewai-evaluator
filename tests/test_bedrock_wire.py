@@ -167,6 +167,15 @@ def test_sampling_parameters_are_not_sent(bedrock: FakeBedrock) -> None:
         assert config["maxTokens"] > 0
 
 
+def test_no_stop_sequence_can_silently_truncate_a_document(bedrock: FakeBedrock) -> None:
+    """These agents have no tools, and a policy may well contain a line like "Observation:"."""
+    _run()
+
+    assert bedrock.requests
+    for request in bedrock.requests:
+        assert not request.body["inferenceConfig"].get("stopSequences")
+
+
 def test_answer_text_streams_as_tokens_and_thinking_stays_out_of_the_draft(
     bedrock: FakeBedrock,
 ) -> None:

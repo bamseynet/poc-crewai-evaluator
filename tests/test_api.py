@@ -303,3 +303,14 @@ def test_a_blank_access_token_is_treated_as_unset_and_bedrock_mode_warns(
     assert settings.api_access_token is None
     assert "API_ACCESS_TOKEN is not set" in caplog.text
     assert app is not None
+
+
+def test_a_token_with_a_trailing_newline_still_authenticates() -> None:
+    app = create_app(
+        Settings(api_access_token="s3cret\n"),  # type: ignore[arg-type]
+        llm_factory=lambda: LLMs(evaluator=ScriptedLLM.build(), worker=ScriptedLLM.build()),
+    )
+    with TestClient(app) as client:
+        response = client.post("/api/runs", json=BODY, headers={"Authorization": "Bearer s3cret"})
+
+    assert response.status_code == 201

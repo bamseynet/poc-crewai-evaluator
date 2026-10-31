@@ -62,6 +62,10 @@ interface FollowOptions {
  * Streams a run's events until it finishes. A dropped connection resumes from the last event seen,
  * which matters for long-running real models behind load balancers.
  */
+function isTransient(status: number): boolean {
+  return status === 429 || status >= 500;
+}
+
 export async function followRun(runId: string, options: FollowOptions): Promise<void> {
   const { token, signal, onEvent, onConnectionChange } = options;
   const baseDelay = options.reconnectBaseMs ?? RECONNECT_BASE_MS;
@@ -80,21 +84,31 @@ export async function followRun(runId: string, options: FollowOptions): Promise<
 
       const parser = new SseParser();
       const reader = response.body.pipeThrough(new TextDecoderStream()).getReader();
-      for (;;) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        for (const message of parser.feed(value)) {
-          if (message.id !== null) lastEventId = message.id;
-          failures = 0;
-          const event = JSON.parse(message.data) as ProgressEvent;
-          onEvent(event);
-          if (event.type === "run_finished") return;
+      try {
+        for (;;) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          for (const message of parser.feed(value)) {
+            const event = JSON.parse(message.data) as ProgressEvent;
+            onEvent(event);
+            // Reset only once the event was handled, or a message that always fails to parse or
+            // apply would be replayed on every reconnect and never reach the retry limit.
+            failures = 0;
+            // Only after the event was delivered, so a failure here does not skip it on resume.
+            if (message.id !== null) lastEventId = message.id;
+            if (event.type === "run_finished") return;
+          }
         }
+      } finally {
+        // Without this, a message that fails to parse leaves its connection open while the next
+        // attempt opens another.
+        reader.cancel().catch(() => undefined);
       }
     } catch (error) {
       if (signal.aborted) return;
-      // The server answered and said no, so retrying would not help.
-      if (error instanceof ApiError) throw error;
+      // The server answered and said no, so retrying would not help. Gateway errors and
+      // throttling from a proxy in front of it are different: the run is probably still going.
+      if (error instanceof ApiError && !isTransient(error.status)) throw error;
     }
 
     failures++;

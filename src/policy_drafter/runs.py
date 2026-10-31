@@ -8,6 +8,7 @@ from the last event it saw. Everything is in memory, so restarting the server lo
 import asyncio
 import logging
 import threading
+from bisect import bisect_right
 from collections.abc import AsyncIterator, Callable
 from concurrent.futures import ThreadPoolExecutor
 from uuid import uuid4
@@ -55,7 +56,8 @@ class Run:
 
     def events_after(self, seq: int) -> list[tuple[int, ProgressEvent]]:
         with self._lock:
-            return [entry for entry in self._log if entry[0] > seq]
+            # The log is ordered by sequence number, so a streaming client need not rescan it.
+            return self._log[bisect_right(self._log, seq, key=lambda entry: entry[0]) :]
 
     async def follow(self, after: int = 0) -> AsyncIterator[tuple[int, ProgressEvent]]:
         """Yield events after `after`, waiting for new ones until the run has finished."""
@@ -116,6 +118,8 @@ class RunManager:
         except RuntimeError:
             # The executor is shut down. Without this the run would stay "active" forever.
             run.finish()
+            with self._lock:
+                self._runs.pop(run.id, None)
             raise
         return run
 

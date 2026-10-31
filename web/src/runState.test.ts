@@ -122,4 +122,16 @@ describe("runReducer", () => {
 
     expect(run.iterations).toHaveLength(1);
   });
+
+  it("ignores a token that arrives after its phase completed", () => {
+    const run = play([
+      started,
+      { type: "iteration_started", iteration: 1 },
+      { type: "phase_started", iteration: 1, phase: "draft" },
+      { type: "draft_completed", iteration: 1, draft: "Done" },
+      { type: "token", iteration: 1, phase: "draft", text: "late" },
+    ]);
+
+    expect(run.iterations[0]?.live).toBe("");
+  });
 });
