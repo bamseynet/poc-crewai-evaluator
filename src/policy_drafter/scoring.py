@@ -30,6 +30,8 @@ _SCORE_KEYS = ("score", "rating", "value", "points")
 _FEEDBACK_KEYS = ("feedback", "comment", "comments", "rationale", "reason", "notes")
 
 _MAX_REPAIRS = 8
+_MAX_KEY_CHARS = 80
+_MAX_UNKNOWN_WARNINGS = 10
 _MAX_REPAIR_CHARS = 50_000
 _MAX_DEPTH = 4
 _MAX_FEEDBACK_CHARS = 4_000
@@ -74,13 +76,15 @@ def parse_evaluation(raw: object, rubric: Rubric, threshold: float | None = None
 
     candidates = _candidates(raw) if isinstance(raw, str) else []
     attempts = [_match_entries(candidate, lookup) for candidate in candidates]
-    # The reading that recovers the most usable scores wins; ties go to the earliest reading.
-    found, unknown = max(
-        attempts,
-        key=lambda attempt: sum(1 for score, _ in attempt[0].values() if score is not None),
-        default=({}, []),
+    # The reading that recovers the most usable scores wins. Ties go to the lowest total, so a
+    # block of flattering scores quoted from the draft cannot outvote the real evaluation.
+    found, unknown = max(attempts, key=_reading_rank, default=({}, []))
+    warnings.extend(
+        f"Ignored unknown criterion {key[:_MAX_KEY_CHARS]!r}."
+        for key in unknown[:_MAX_UNKNOWN_WARNINGS]
     )
-    warnings.extend(f"Ignored unknown criterion {key!r}." for key in unknown)
+    if len(unknown) > _MAX_UNKNOWN_WARNINGS:
+        warnings.append(f"Ignored {len(unknown) - _MAX_UNKNOWN_WARNINGS} more unknown criteria.")
 
     scores = [
         _score_for(criterion, rubric.threshold_for(criterion, threshold), found.get(criterion.id))
@@ -156,6 +160,13 @@ def _scan_brackets(body: str) -> Iterator[Any]:
                 yield _parse_lenient(body[match.start() : match.start() + _MAX_REPAIR_CHARS])
         else:
             yield value
+
+
+def _reading_rank(
+    attempt: tuple[dict[str, tuple[float | None, str]], list[str]],
+) -> tuple[int, float]:
+    usable = [score for score, _ in attempt[0].values() if score is not None]
+    return len(usable), -sum(usable)
 
 
 def _match_entries(

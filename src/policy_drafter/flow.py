@@ -273,5 +273,8 @@ def run_drafting(
         # to a CrewAI error, the caller gets a recorded outcome rather than an exception.
         except Exception as error:
             flow.fail(error)
+        else:
+            if not flow._concluded:  # the run ended without reaching `finish`
+                flow.fail(RuntimeError("the run ended without reaching a conclusion"))
     state: DraftingState = flow.state
     return state

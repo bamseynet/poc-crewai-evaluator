@@ -49,3 +49,10 @@ def test_unwritable_output_path_is_rejected_before_any_model_call(
 
     with pytest.raises(SystemExit):
         main(["Draft a policy", "--output", str(tmp_path / "missing" / "out.md")])
+
+
+def test_invalid_settings_are_a_cli_error_not_a_traceback(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("LLM_MODE", "not-a-mode")
+
+    with pytest.raises(SystemExit):
+        main(["Draft a policy"])

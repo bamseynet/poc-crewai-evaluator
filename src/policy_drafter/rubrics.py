@@ -22,7 +22,7 @@ from pydantic import (
 
 def normalise_key(key: str) -> str:
     """How the evaluator's criterion names are matched to rubric criteria."""
-    return re.sub(r"[^a-z0-9]+", "_", key.lower()).strip("_")
+    return re.sub(r"[\W_]+", "_", key.lower()).strip("_")
 
 
 Slug = Annotated[str, StringConstraints(pattern=r"^[a-z][a-z0-9_]*$")]

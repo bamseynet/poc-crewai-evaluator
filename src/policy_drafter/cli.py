@@ -59,7 +59,11 @@ def main(argv: Sequence[str] | None = None) -> int:
     except ValidationError as exc:
         parser.error(str(exc))
 
-    state = run_drafting(config, build_llms(Settings()), on_event=_print_progress)
+    try:
+        llms = build_llms(Settings())
+    except ValidationError as exc:
+        parser.error(f"invalid settings: {exc}")
+    state = run_drafting(config, llms, on_event=_print_progress)
 
     if state.final_draft is not None:
         if args.output:
