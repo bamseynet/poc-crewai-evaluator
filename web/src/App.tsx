@@ -68,6 +68,8 @@ export function App() {
           onConnectionChange: (connected) => setReconnecting(!connected),
         });
       } catch (reason) {
+        // A superseded run's failure must not be shown against the run that replaced it.
+        if (stream.current !== controller) return;
         if (reason instanceof ApiError && reason.status === 401) {
           setError("The access token was not accepted.");
         } else {

@@ -111,7 +111,12 @@ class RunManager:
                 raise TooManyRunsError
             self._runs[run.id] = run
             self._evict_finished()
-        self._executor.submit(self._execute, run, config)
+        try:
+            self._executor.submit(self._execute, run, config)
+        except RuntimeError:
+            # The executor is shut down. Without this the run would stay "active" forever.
+            run.finish()
+            raise
         return run
 
     def get(self, run_id: str) -> Run | None:

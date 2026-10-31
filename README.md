@@ -55,6 +55,9 @@ Found in review and deliberately left for later; none changes the result on norm
 - **A failed or empty draft ends the run**, keeping the best evaluated draft, instead of retrying the drafter.
 - **Prompt injection is mitigated, not solved.** Request, draft and feedback text cannot close the tags that frame them, but researcher notes reach the drafter unframed and a model can still be talked into following instructions inside user text. Treat the output as a draft for human review.
 - **Token streaming** relies on CrewAI dispatching events with the caller's context; it is tested against CrewAI 1.15.x only, and tokens are dropped silently if that changes.
+- **API/UI:** shutdown ends open event streams without a terminal event and does not stop in-flight workers; a client that reconnects mid-phase misses the live tokens already sent; an invalid `Last-Event-ID` header returns 422 rather than replaying from the start; the UI has no retry if the API is down at page load, and a malformed event payload shows as a dropped connection.
+- **Auth:** with `LLM_MODE=bedrock` and no `API_ACCESS_TOKEN` the API only logs a warning. Always set a token when the API is reachable from a network.
+- **Evaluator retry** keeps the first reading when both score the same number of criteria, even if the retry was stricter.
 
 ## Licence
 
