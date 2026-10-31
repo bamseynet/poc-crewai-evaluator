@@ -120,7 +120,6 @@ def test_accepts_alternative_shapes(payload: object) -> None:
         ("4/5", 8),
         ("80%", 8),
         ("Score: 6", 6),
-        (11, 10),
         (-3, 0),
         ("15/10", 10),
     ],
@@ -133,7 +132,7 @@ def test_normalises_score_values(value: object, expected: float) -> None:
 
 @pytest.mark.parametrize(
     "value",
-    [None, "", "excellent", True, False, [], {}, "NaN", "Infinity", "8/0"],
+    [None, "", "excellent", True, False, [], {}, "NaN", "Infinity", "8/0", 11, 85, "85", 1000],
 )
 def test_unusable_score_values_fail_closed(value: object) -> None:
     raw = json.dumps({"criteria": [{"id": "scope", "score": value}, {"id": "roles", "score": 9}]})
@@ -241,3 +240,20 @@ def test_non_string_input_never_raises() -> None:
     evaluation = parse_evaluation(None, RUBRIC)
 
     assert not evaluation.parse_ok
+
+
+def test_bracket_in_preamble_does_not_hide_the_json_object() -> None:
+    raw = "Per policy [1], here is my evaluation: " + json.dumps(CLEAN)
+
+    evaluation = parse_evaluation(raw, RUBRIC)
+
+    assert evaluation.parse_ok
+    assert scores(raw) == {"scope": 9, "roles": 5}
+
+
+def test_out_of_scale_scores_cannot_approve_a_draft() -> None:
+    raw = json.dumps({"criteria": [{"id": "scope", "score": 85}, {"id": "roles", "score": 90}]})
+
+    evaluation = parse_evaluation(raw, RUBRIC)
+
+    assert not evaluation.all_passed

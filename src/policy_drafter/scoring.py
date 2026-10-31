@@ -28,6 +28,7 @@ _ID_KEYS = ("id", "criterion_id", "criterion", "name", "key")
 _SCORE_KEYS = ("score", "rating", "value", "points")
 _FEEDBACK_KEYS = ("feedback", "comment", "comments", "rationale", "reason", "notes")
 
+_MAX_BRACKETS = 32
 _MAX_DEPTH = 4
 _MAX_FEEDBACK_CHARS = 4_000
 _MAX_SCORE = 10.0
@@ -63,25 +64,21 @@ class Evaluation(BaseModel):
 
 def parse_evaluation(raw: object, rubric: Rubric, threshold: float | None = None) -> Evaluation:
     """Parse evaluator output against a rubric. Never raises."""
-    payload = _load_json(raw) if isinstance(raw, str) else None
     warnings: list[str] = []
-
     lookup: dict[str, Criterion] = {}
     for criterion in rubric.criteria:
         lookup[_normalise(criterion.name)] = criterion
         lookup[_normalise(criterion.id)] = criterion
 
-    found: dict[str, tuple[float | None, str]] = {}
-    for key, value, feedback in _entries(payload):
-        matched = lookup.get(_normalise(key))
-        if matched is None:
-            warnings.append(f"Ignored unknown criterion {key!r}.")
-            continue
-        score = _coerce_score(value)
-        previous = found.get(matched.id)
-        # When the evaluator scores a criterion twice, believe the less flattering score.
-        if previous is None or previous[0] is None or (score is not None and score < previous[0]):
-            found[matched.id] = (score, feedback)
+    candidates = _candidates(raw) if isinstance(raw, str) else []
+    attempts = [_match_entries(candidate, lookup) for candidate in candidates]
+    # The reading that recovers the most usable scores wins; ties go to the earliest reading.
+    found, unknown = max(
+        attempts,
+        key=lambda attempt: sum(1 for score, _ in attempt[0].values() if score is not None),
+        default=({}, []),
+    )
+    warnings.extend(f"Ignored unknown criterion {key!r}." for key in unknown)
 
     scores = [
         _score_for(criterion, rubric.threshold_for(criterion, threshold), found.get(criterion.id))
@@ -124,24 +121,42 @@ def _score_for(
     )
 
 
-def _load_json(text: str) -> Any:
-    """Find the most plausible JSON value in free text, or return None."""
+def _candidates(text: str) -> list[Any]:
+    """Every plausible JSON reading of free text, best guess first.
+
+    Which reading is right depends on the rubric, so the caller picks. That keeps a stray
+    bracket in the preamble ("per policy [1], ...") or a truncated tail from hiding the real
+    evaluation.
+    """
     fenced = _FENCE.search(text)
     body = (fenced.group(1) if fenced else text).strip()
-    opening = [position for position in (body.find("{"), body.find("[")) if position != -1]
-    if not opening:
-        return _parse_strict(body)
+    candidates = [_parse_strict(body)]
+    positions = [match.start() for match in re.finditer(r"[{\[]", body)][:_MAX_BRACKETS]
+    decoder = json.JSONDecoder()
+    for position in positions:
+        try:
+            candidates.append(decoder.raw_decode(body, position)[0])
+        except (ValueError, RecursionError):
+            candidates.append(_parse_lenient(body[position:]))
+    return [candidate for candidate in candidates if candidate is not None]
 
-    start = min(opening)
-    end = max(body.rfind("}"), body.rfind("]")) + 1
-    for candidate in (body, body[start:end]):
-        parsed = _parse_strict(candidate)
-        if parsed is not None:
-            return parsed
-    # Truncated output has no closing bracket and trailing prose confuses the repair, so try
-    # both spans and keep whichever recovers more criteria.
-    repaired = (_parse_lenient(body[start:end]), _parse_lenient(body[start:]))
-    return max(repaired, key=lambda parsed: sum(1 for _ in _entries(parsed)))
+
+def _match_entries(
+    payload: Any, lookup: dict[str, Criterion]
+) -> tuple[dict[str, tuple[float | None, str]], list[str]]:
+    found: dict[str, tuple[float | None, str]] = {}
+    unknown: list[str] = []
+    for key, value, feedback in _entries(payload):
+        matched = lookup.get(_normalise(key))
+        if matched is None:
+            unknown.append(key)
+            continue
+        score = _coerce_score(value)
+        previous = found.get(matched.id)
+        # When the evaluator scores a criterion twice, believe the less flattering score.
+        if previous is None or previous[0] is None or (score is not None and score < previous[0]):
+            found[matched.id] = (score, feedback)
+    return found, unknown
 
 
 def _parse_strict(text: str) -> Any:
@@ -188,7 +203,7 @@ def _coerce_score(value: Any) -> float | None:
     if isinstance(value, bool):
         return None
     if isinstance(value, int | float):
-        return _clamp(float(value))
+        return _bare(float(value))
     return _score_from_text(value.strip()) if isinstance(value, str) else None
 
 
@@ -199,8 +214,13 @@ def _score_from_text(text: str) -> float | None:
     if match := _PERCENT.match(text):
         return _clamp(float(match.group(1)) / _MAX_SCORE)
     if match := _PLAIN.match(text):
-        return _clamp(float(match.group(1)))
+        return _bare(float(match.group(1)))
     return None
+
+
+def _bare(score: float) -> float | None:
+    """A bare number above the scale is probably 0-100 and must not be read as a perfect 10."""
+    return None if score > _MAX_SCORE else _clamp(score)
 
 
 def _clamp(score: float) -> float | None:

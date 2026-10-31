@@ -40,3 +40,12 @@ def test_rejects_invalid_arguments(monkeypatch: pytest.MonkeyPatch) -> None:
 
     with pytest.raises(SystemExit):
         main(["Draft a policy", "--rubric", "does_not_exist"])
+
+
+def test_unwritable_output_path_is_rejected_before_any_model_call(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("LLM_MODE", "fake")
+
+    with pytest.raises(SystemExit):
+        main(["Draft a policy", "--output", str(tmp_path / "missing" / "out.md")])

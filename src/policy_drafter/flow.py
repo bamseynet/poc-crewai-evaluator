@@ -90,6 +90,7 @@ class DraftingFlow(Flow[DraftingState]):
     # Flows otherwise create a long-term memory store, which this pattern has no use for: the
     # state below is the only memory between iterations.
     _skip_auto_memory: bool = PrivateAttr(default=True)
+    _concluded: bool = PrivateAttr(default=False)
 
     @start()
     def begin(self) -> None:
@@ -172,6 +173,10 @@ class DraftingFlow(Flow[DraftingState]):
     def fail(self, error: Exception) -> None:
         """Record a failure as a stop reason, so that callers can treat every run the same way."""
         logger.exception("Drafting run failed", exc_info=error)
+        if self._concluded:
+            # The outcome was already recorded and announced; a late failure (such as a broken
+            # event sink) must not emit a second terminal event or rewrite the stop reason.
+            return
         self.state.stop_reason = StopReason.ERROR
         self.state.error = f"{type(error).__name__}: {error}"[:_MAX_ERROR_CHARS]
         self._conclude()
@@ -183,13 +188,13 @@ class DraftingFlow(Flow[DraftingState]):
 
     def _conclude(self) -> None:
         state = self.state
+        self._concluded = True
         final = select_final(state.iterations)
         state.final_iteration = final.number if final else None
         state.final_draft = final.draft if final else None
-        assert state.stop_reason is not None
         self._emit(
             RunFinished(
-                stop_reason=state.stop_reason,
+                stop_reason=state.stop_reason or StopReason.ERROR,
                 iterations=len(state.iterations),
                 final_iteration=state.final_iteration,
                 final_draft=state.final_draft,

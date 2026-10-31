@@ -451,3 +451,18 @@ def test_failure_after_a_scored_draft_keeps_the_best_draft_so_far() -> None:
     assert state.stop_reason is StopReason.ERROR
     assert state.final_draft == "Usable."
     assert state.final_iteration == 1
+
+
+def test_a_sink_that_fails_after_the_run_finished_does_not_rewrite_the_outcome() -> None:
+    llm = ScriptedLLM.build(drafter=["Draft one."], evaluator=[PASS])
+    seen: list[ProgressEvent] = []
+
+    def flaky_sink(event: ProgressEvent) -> None:
+        seen.append(event)
+        if event.type == "run_finished":
+            raise ConnectionError("client went away")
+
+    state = run_drafting(config(), LLMs(evaluator=llm, worker=llm), on_event=flaky_sink)
+
+    assert state.stop_reason is StopReason.PASSED
+    assert [event.type for event in seen].count("run_finished") == 1
