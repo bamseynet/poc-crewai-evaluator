@@ -1,0 +1,30 @@
+id: completeness
+name: Completeness
+description: Does the policy contain every section an auditor or employee would expect to find?
+threshold: 7
+criteria:
+  - id: purpose_and_scope
+    name: Purpose and scope
+    description: >-
+      States why the policy exists and exactly who and what it covers, including contractors,
+      systems and geographies, and names anything explicitly out of scope.
+  - id: roles_and_responsibilities
+    name: Roles and responsibilities
+    description: >-
+      Names the accountable owner and the responsibilities of each role, such as employees,
+      managers, security, legal and the approving committee.
+  - id: requirements_and_controls
+    name: Requirements and controls
+    description: >-
+      Sets out what is required, permitted and prohibited in enough detail to apply to everyday
+      situations, along with the controls that enforce those rules.
+  - id: exceptions_and_enforcement
+    name: Exceptions and enforcement
+    description: >-
+      Describes how to request an exception, who approves it, how breaches are reported and what
+      the consequences of non-compliance are.
+  - id: governance_and_review
+    name: Governance and review
+    description: >-
+      Includes document ownership, version, effective date, review cadence and the events that
+      trigger an out-of-cycle review.

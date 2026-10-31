@@ -1,0 +1,25 @@
+id: clarity
+name: Clarity
+description: Can the intended reader understand and follow the policy without asking for help?
+threshold: 7
+criteria:
+  - id: plain_language
+    name: Plain language
+    description: >-
+      Uses short sentences and everyday words, avoids unexplained jargon and defines the terms it
+      has to use.
+  - id: normative_language
+    name: Normative language
+    description: >-
+      Uses "must", "should" and "may" consistently and deliberately, so that mandatory rules are
+      distinguishable from guidance.
+  - id: structure_and_navigation
+    name: Structure and navigation
+    description: >-
+      Uses a logical order, numbered sections and informative headings, so that a reader can find
+      and cite a specific rule.
+  - id: actionable_requirements
+    name: Actionable requirements
+    description: >-
+      Each requirement says who must do what and by when, and could be tested by an auditor. Vague
+      statements such as "appropriate measures" are avoided.
