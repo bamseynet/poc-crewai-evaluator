@@ -70,6 +70,11 @@ class ScriptedLLM(BaseLLM):
                 )
         return text
 
+    def get_input_tokens_count(
+        self, messages: Any, tools: Any = None, response_model: Any = None
+    ) -> int:
+        return 0
+
     def prompts_for(self, role: str) -> list[str]:
         return [call.prompt for call in self._calls if call.role == role]
 
