@@ -1,8 +1,9 @@
 """Runtime settings, read from the environment or a local .env file."""
 
-from typing import Literal
+from pathlib import Path
+from typing import Any, Literal
 
-from pydantic import Field
+from pydantic import Field, SecretStr, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 # Cross-Region inference profile ids from the Amazon Bedrock model cards:
@@ -19,3 +20,17 @@ class Settings(BaseSettings):
     bedrock_worker_model_id: str = DEFAULT_WORKER_MODEL_ID
     aws_region: str = "us-east-1"
     fake_llm_delay_ms: int = Field(default=0, ge=0, le=1000)
+
+    # When set, the API requires `Authorization: Bearer <token>` to start or watch a run.
+    api_access_token: SecretStr | None = None
+    max_concurrent_runs: int = Field(default=2, ge=1)
+    max_retained_runs: int = Field(default=50, ge=1)
+    # The built web UI, for deployments that serve it from the API container.
+    web_dist: Path | None = None
+
+    @field_validator("api_access_token", mode="before")
+    @classmethod
+    def _blank_token_is_unset(cls, value: Any) -> Any:
+        # `API_ACCESS_TOKEN=` in a copied .env is a blank value, not a token. Either way auth is
+        # off, and create_app warns about that when real models are in use.
+        return None if isinstance(value, str) and not value.strip() else value

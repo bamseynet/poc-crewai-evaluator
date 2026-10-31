@@ -44,6 +44,24 @@ This policy applies to all employees and contractors.
 Employees must use approved tools and must protect company and customer data."""
 
 
+# One of these is applied per revision, so that the diff shows edits as well as additions.
+_REWORDINGS = (
+    (
+        "This policy applies to all employees and contractors.",
+        "This policy applies to all employees, contractors and temporary staff, in every office.",
+    ),
+    (
+        "Employees must use approved tools and must protect company and customer data.",
+        "Employees must use only approved tools and must protect company and customer data, "
+        "including when working remotely.",
+    ),
+    (
+        "This policy sets out how the organisation manages the activity described in the request.",
+        "This policy sets out how the organisation manages this activity and who is accountable.",
+    ),
+)
+
+
 class FakeLLM(BaseLLM):
     delay_seconds: float = 0
 
@@ -101,6 +119,11 @@ def _draft(prompt: str) -> str:
     previous = _section(prompt, "previous_draft")
     if not previous or previous == NO_PREVIOUS_DRAFT:
         return _FIRST_DRAFT.format(request=_section(prompt, "request"))
+
+    for old, new in _REWORDINGS:
+        if old in previous:
+            previous = previous.replace(old, new)
+            break
 
     sections = [previous]
     for criterion_id, name, feedback in _FEEDBACK_LINE.findall(

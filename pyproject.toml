@@ -8,10 +8,12 @@ requires-python = ">=3.12,<3.13"
 dependencies = [
     "boto3>=1.43,<2",
     "crewai[litellm]==1.15.33",
+    "fastapi>=0.162,<1",
     "json-repair>=0.60,<1",
     "pydantic>=2.11,<2.13",
     "pydantic-settings>=2.14,<3",
     "pyyaml>=6,<7",
+    "uvicorn>=0.54,<1",
 ]
 
 [project.scripts]
@@ -19,6 +21,7 @@ policy-drafter = "policy_drafter.cli:main"
 
 [dependency-groups]
 dev = [
+    "httpx>=0.28",
     "mypy>=1.18",
     "pytest>=8.4",
     "pytest-timeout>=2.4",
