@@ -1,0 +1,27 @@
+# Python
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+dist/
+build/
+
+# Node
+node_modules/
+web/dist/
+*.tsbuildinfo
+.vite/
+
+# CDK
+infra/cdk.out/
+infra/cdk.context.json
+
+# Local configuration: real values never go in git
+.env
+.env.*
+!.env.example
+
+# Tooling
+.DS_Store

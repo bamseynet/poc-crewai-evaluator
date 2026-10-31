@@ -1,0 +1,24 @@
+id: tone
+name: Tone
+description: Does the policy sound like a credible, usable corporate document?
+threshold: 7
+criteria:
+  - id: authoritative_and_neutral
+    name: Authoritative and neutral
+    description: >-
+      Writes with calm authority and without marketing language, hedging, sarcasm or opinion.
+  - id: audience_appropriate
+    name: Audience appropriate
+    description: >-
+      Addresses the people who must follow the policy at a suitable level of detail, and does not
+      write only for lawyers or only for specialists.
+  - id: enabling_not_alarmist
+    name: Enabling, not alarmist
+    description: >-
+      Explains the reasoning behind restrictions and shows people how to work within them, rather
+      than relying on threats.
+  - id: consistent_voice
+    name: Consistent voice
+    description: >-
+      Keeps the same voice, tense and terminology throughout, with no signs of having been stitched
+      together from different sources.

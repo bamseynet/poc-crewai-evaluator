@@ -1,0 +1,26 @@
+id: regulatory_coverage
+name: Regulatory coverage
+description: Does the policy address the obligations that apply to this organisation?
+threshold: 7
+criteria:
+  - id: applicable_regimes
+    name: Applicable regimes
+    description: >-
+      Identifies the laws, regulations and standards relevant to the organisation's sector, size
+      and jurisdictions, and states any assumptions made about them.
+  - id: obligation_mapping
+    name: Obligation mapping
+    description: >-
+      Connects policy statements to the specific obligations they satisfy, so that a reviewer can
+      trace each obligation to a control.
+  - id: citation_accuracy
+    name: Citation accuracy
+    description: >-
+      Citations are specific and plausible. Anything the author is not certain of is flagged for
+      legal review rather than stated as fact. Invented references score very low.
+    threshold: 8
+  - id: evidence_and_auditability
+    name: Evidence and auditability
+    description: >-
+      Specifies the records, logs, attestations and retention periods that would let the
+      organisation demonstrate compliance to an auditor or regulator.

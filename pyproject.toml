@@ -1,0 +1,54 @@
+[project]
+name = "policy-drafter"
+version = "0.1.0"
+description = "CrewAI evaluator-optimizer proof of concept for enterprise policy drafting"
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    "boto3>=1.43,<2",
+    "crewai[litellm]==1.15.33",
+    "json-repair>=0.60,<1",
+    "pydantic>=2.11,<2.13",
+    "pydantic-settings>=2.14,<3",
+    "pyyaml>=6,<7",
+]
+
+[project.scripts]
+policy-drafter = "policy_drafter.cli:main"
+
+[dependency-groups]
+dev = [
+    "mypy>=1.18",
+    "pytest>=8.4",
+    "pytest-timeout>=2.4",
+    "ruff>=0.14",
+    "types-pyyaml>=6",
+]
+
+[build-system]
+requires = ["hatchling>=1.27"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/policy_drafter"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra --strict-markers"
+timeout = 60
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP", "SIM", "RUF", "PL"]
+ignore = ["PLR0913", "PLR2004"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+files = ["src", "tests"]
+mypy_path = "src"
