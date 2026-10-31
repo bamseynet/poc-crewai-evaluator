@@ -127,3 +127,8 @@ def test_a_criterion_name_may_not_collide_with_another_criterions_id() -> None:
 
     with pytest.raises(RubricError, match="ambiguous"):
         parse_rubric(clash)
+
+
+def test_a_criterion_name_with_no_matchable_characters_is_rejected() -> None:
+    with pytest.raises(RubricError):
+        parse_rubric(VALID.replace("name: Second", 'name: "!!!"'))

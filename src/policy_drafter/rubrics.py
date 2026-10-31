@@ -64,6 +64,8 @@ class Rubric(BaseModel):
         owners: dict[str, str] = {}
         for criterion in self.criteria:
             for key in {normalise_key(criterion.id), normalise_key(criterion.name)}:
+                if not key:
+                    raise ValueError(f"criterion {criterion.id!r} needs a name with letters")
                 if owners.setdefault(key, criterion.id) != criterion.id:
                     raise ValueError(
                         f"ambiguous criterion {key!r} in rubric {self.id!r}: "

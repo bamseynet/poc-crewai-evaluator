@@ -266,7 +266,8 @@ def _bare(score: float) -> float | None:
 def _clamp(score: float) -> float | None:
     if not math.isfinite(score):
         return None
-    return round(min(max(score, 0.0), _MAX_SCORE), 2)
+    # Not rounded: rounding 6.996 up to 7.0 would let a failing score meet the pass mark.
+    return min(max(score, 0.0), _MAX_SCORE)
 
 
 def _feedback(item: dict[str, Any]) -> str:

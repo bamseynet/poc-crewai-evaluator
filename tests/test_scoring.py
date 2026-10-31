@@ -408,3 +408,11 @@ criteria:
     raw = json.dumps({"Ñandú": 8, "Größe": 6})
 
     assert [s.score for s in parse_evaluation(raw, rubric).scores] == [8, 6]
+
+
+def test_a_score_just_below_the_pass_mark_does_not_round_up_to_a_pass() -> None:
+    raw = json.dumps({"criteria": [{"id": "scope", "score": 6.996}, {"id": "roles", "score": 9}]})
+
+    scope = parse_evaluation(raw, RUBRIC).scores[0]
+
+    assert not scope.passed

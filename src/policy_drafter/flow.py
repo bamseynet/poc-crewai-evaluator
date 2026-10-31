@@ -195,6 +195,10 @@ class DraftingFlow(Flow[DraftingState]):
     def finish(self) -> None:
         self._conclude()
 
+    @property
+    def concluded(self) -> bool:
+        return self._concluded
+
     def fail(self, error: Exception) -> None:
         """Record a failure as a stop reason, so that callers can treat every run the same way."""
         logger.exception("Drafting run failed", exc_info=error)
@@ -274,7 +278,7 @@ def run_drafting(
         except Exception as error:
             flow.fail(error)
         else:
-            if not flow._concluded:  # the run ended without reaching `finish`
+            if not flow.concluded:  # the run ended without reaching `finish`
                 flow.fail(RuntimeError("the run ended without reaching a conclusion"))
     state: DraftingState = flow.state
     return state
