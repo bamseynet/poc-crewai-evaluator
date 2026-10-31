@@ -15,7 +15,9 @@ const regionsContext = app.node.tryGetContext("bedrockDestinationRegions") as
 // Accepts "a,b" from `-c` or an array from cdk.json, and ignores stray spaces.
 const explicitRegions = (
   typeof regionsContext === "string" ? regionsContext.split(",") : regionsContext
-)?.map((region) => region.trim());
+)
+  ?.map((region) => region.trim())
+  .filter((region) => region !== "");
 
 new PolicyDrafterStack(app, "PolicyDrafter", {
   modelId,

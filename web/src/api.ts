@@ -88,9 +88,11 @@ export async function followRun(runId: string, options: FollowOptions): Promise<
         const { done, value } = await reader.read();
         if (done) break;
         for (const message of parser.feed(value)) {
-          failures = 0;
           const event = JSON.parse(message.data) as ProgressEvent;
           onEvent(event);
+          // Reset only once the event was handled, or a message that always fails to parse or
+          // apply would be replayed on every reconnect and never reach the retry limit.
+          failures = 0;
           // Only after the event was delivered, so a failure here does not skip it on resume.
           if (message.id !== null) lastEventId = message.id;
           if (event.type === "run_finished") return;

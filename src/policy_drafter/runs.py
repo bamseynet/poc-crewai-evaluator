@@ -118,6 +118,8 @@ class RunManager:
         except RuntimeError:
             # The executor is shut down. Without this the run would stay "active" forever.
             run.finish()
+            with self._lock:
+                self._runs.pop(run.id, None)
             raise
         return run
 
