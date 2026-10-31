@@ -23,6 +23,7 @@ from policy_drafter.prompts import (
     NO_PREVIOUS_DRAFT,
     RESEARCH_TASK,
     RESEARCHER_ROLE,
+    quote_untrusted,
     render_feedback,
     render_rubric,
 )
@@ -44,10 +45,10 @@ def build_writer_crew(
 ) -> Crew:
     """Researcher then drafter, both on the cheaper worker tier."""
     prompt_values = {
-        "request": request,
+        "request": quote_untrusted(request),
         "rubric": render_rubric(rubric),
         "feedback": render_feedback(previous) if previous else NO_FEEDBACK,
-        "previous_draft": previous_draft or NO_PREVIOUS_DRAFT,
+        "previous_draft": quote_untrusted(previous_draft) if previous_draft else NO_PREVIOUS_DRAFT,
     }
     researcher = _agent(
         RESEARCHER_ROLE,
@@ -86,7 +87,9 @@ def build_evaluator_crew(llms: LLMs, *, request: str, rubric: Rubric, draft: str
     )
     evaluation = Task(
         description=EVALUATION_TASK.format(
-            request=request, rubric=render_rubric(rubric), draft=draft
+            request=quote_untrusted(request),
+            rubric=render_rubric(rubric),
+            draft=quote_untrusted(draft),
         ),
         expected_output="Only a JSON object with a score and feedback for every criterion.",
         agent=evaluator,

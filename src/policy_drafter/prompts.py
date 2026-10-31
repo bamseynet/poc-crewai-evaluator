@@ -5,6 +5,8 @@ substitutes placeholders one after another: a request or model reply that happen
 `{feedback}` would have it replaced by the real feedback.
 """
 
+import re
+
 from policy_drafter.rubrics import Rubric
 from policy_drafter.scoring import Evaluation
 
@@ -101,9 +103,23 @@ def render_rubric(rubric: Rubric) -> str:
     )
 
 
+_FRAMING_TAG = re.compile(
+    r"<\s*(/?)\s*(request|rubric|previous_draft|evaluator_feedback|draft)\s*>", re.IGNORECASE
+)
+
+
+def quote_untrusted(text: str) -> str:
+    """Stop user, draft or evaluator text from closing the tags that frame it in a prompt.
+
+    Only the framing tags are neutralised, so the text otherwise reaches the model unchanged.
+    This reduces prompt injection; it cannot eliminate it. See the README's security notes.
+    """
+    return _FRAMING_TAG.sub(lambda m: f"&lt;{m.group(1)}{m.group(2)}&gt;", text)
+
+
 def _one_line(text: str) -> str:
     """Evaluator text is model output: keep it on one line and unable to close a prompt tag."""
-    return " ".join(text.split()).replace("<", "&lt;")
+    return quote_untrusted(" ".join(text.split())).replace("<", "&lt;")
 
 
 def render_feedback(evaluation: Evaluation) -> str:

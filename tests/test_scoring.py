@@ -361,3 +361,15 @@ def test_trailing_punctuation_on_a_score_is_ignored(value: str) -> None:
     raw = json.dumps({"criteria": [{"id": "scope", "score": value}, {"id": "roles", "score": 9}]})
 
     assert scores(raw)["scope"] == 8
+
+
+def test_a_lone_entry_with_a_numeric_id_uses_the_named_criterion() -> None:
+    raw = json.dumps({"id": 1, "criterion": "scope", "score": 8})
+
+    assert scores(raw)["scope"] == 8
+
+
+def test_an_empty_container_beside_flat_scores_does_not_hide_them() -> None:
+    raw = json.dumps({"scope": 8, "roles": 9, "scores": []})
+
+    assert scores(raw) == {"scope": 8, "roles": 9}

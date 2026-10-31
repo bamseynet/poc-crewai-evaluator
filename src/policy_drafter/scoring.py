@@ -30,6 +30,7 @@ _SCORE_KEYS = ("score", "rating", "value", "points")
 _FEEDBACK_KEYS = ("feedback", "comment", "comments", "rationale", "reason", "notes")
 
 _MAX_REPAIRS = 8
+_MAX_REPAIR_CHARS = 50_000
 _MAX_DEPTH = 4
 _MAX_FEEDBACK_CHARS = 4_000
 _MAX_SCORE = 10.0
@@ -152,7 +153,7 @@ def _scan_brackets(body: str) -> Iterator[Any]:
             # prose fragments such as "[1]" or "{x" cannot use up the budget.
             if repairs < _MAX_REPAIRS:
                 repairs += 1
-                yield _parse_lenient(body[match.start() :])
+                yield _parse_lenient(body[match.start() : match.start() + _MAX_REPAIR_CHARS])
         else:
             yield value
 
@@ -205,13 +206,13 @@ def _entries(payload: Any, depth: int = 0) -> Iterator[tuple[str, Any, str]]:
         return
 
     for container in _CONTAINER_KEYS:
-        if isinstance(payload.get(container), list | dict):
+        if payload.get(container) and isinstance(payload[container], list | dict):
             yield from _entries(payload[container], depth + 1)
             return
 
     # A lone entry rather than a list of them: {"id": "clarity", "score": 8, ...}.
-    lone_key = _first(payload, _ID_KEYS)
-    if isinstance(lone_key, str) and _first(payload, _SCORE_KEYS) is not None:
+    lone_key = _first_text(payload, _ID_KEYS)
+    if lone_key is not None and _first(payload, _SCORE_KEYS) is not None:
         yield lone_key, _first(payload, _SCORE_KEYS), _feedback(payload)
         return
 

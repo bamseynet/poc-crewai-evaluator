@@ -153,7 +153,12 @@ class DraftingFlow(Flow[DraftingState]):
                     if evaluation is None:
                         raise
                     break  # keep the reading already in hand
-                self._emit(EvaluationRetried(iteration=state.iteration, warnings=[str(error)]))
+                self._emit(
+                    EvaluationRetried(
+                        iteration=state.iteration,
+                        warnings=[f"Evaluator call failed: {type(error).__name__}"],
+                    )
+                )
                 continue
             latest = parse_evaluation(result.raw, rubric, state.threshold)
             # A retry must never replace a better reading with a worse one.
