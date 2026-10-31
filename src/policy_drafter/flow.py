@@ -11,6 +11,7 @@ decides when the loop ends.
 
 import logging
 import re
+import threading
 from collections.abc import Sequence
 from typing import Final, Literal
 
@@ -52,7 +53,7 @@ _PHASE_BY_ROLE: dict[str, Phase] = {
     DRAFTER_ROLE: "draft",
     EVALUATOR_ROLE: "evaluate",
 }
-_WRAPPING_FENCE = re.compile(r"^```[a-zA-Z]*\n(.*)\n```$", re.DOTALL)
+_WRAPPING_FENCE = re.compile(r"^```([a-zA-Z]*)\n(.*)\n```$", re.DOTALL)
 
 
 def stop_reason_for(
@@ -91,6 +92,8 @@ class DraftingFlow(Flow[DraftingState]):
     # state below is the only memory between iterations.
     _skip_auto_memory: bool = PrivateAttr(default=True)
     _concluded: bool = PrivateAttr(default=False)
+    # Tokens arrive on CrewAI's streaming thread and everything else on the flow's.
+    _emit_lock: threading.Lock = PrivateAttr(default_factory=threading.Lock)
 
     @start()
     def begin(self) -> None:
@@ -220,7 +223,8 @@ class DraftingFlow(Flow[DraftingState]):
         self._emit(PhaseStarted(iteration=iteration, phase="draft"))
 
     def _emit(self, event: ProgressEvent) -> None:
-        self.on_event(event)
+        with self._emit_lock:
+            self.on_event(event)
 
 
 def _scored(evaluation: Evaluation) -> int:
@@ -231,10 +235,13 @@ def _clean_draft(raw: str) -> str:
     """Remove the code fence that models sometimes wrap a Markdown document in."""
     text = raw.strip()
     match = _WRAPPING_FENCE.match(text)
-    # Only unwrap when the fence is the outer wrapper: a document that opens and closes with
-    # its own code blocks has fence lines inside as well.
-    if match and "\n```" not in match.group(1):
-        return match.group(1).strip()
+    if match is None:
+        return text
+    language, body = match.groups()
+    # A fence tagged markdown is a wrapper whatever it contains. An untagged one is only a
+    # wrapper when no code block sits inside, as a document may open and close with its own.
+    if language.lower() in {"markdown", "md"} or "\n```" not in body:
+        return body.strip()
     return text
 
 

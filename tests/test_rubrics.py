@@ -120,3 +120,10 @@ def test_duplicate_bundled_rubric_ids_are_rejected(monkeypatch: pytest.MonkeyPat
             rubrics._bundled_rubrics()
     finally:
         rubrics._bundled_rubrics.cache_clear()
+
+
+def test_a_criterion_name_may_not_collide_with_another_criterions_id() -> None:
+    clash = VALID.replace("name: Second", "name: First Item")
+
+    with pytest.raises(RubricError, match="ambiguous"):
+        parse_rubric(clash)

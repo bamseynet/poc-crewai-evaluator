@@ -1,12 +1,13 @@
 """The evaluator-optimizer loop, exercised end to end with a scripted LLM."""
 
 import threading
+import time
 
 import pytest
 from pydantic import ValidationError
 
 from policy_drafter.events import ProgressEvent, TokenEmitted
-from policy_drafter.flow import run_drafting
+from policy_drafter.flow import DraftingFlow, run_drafting
 from policy_drafter.llm import LLMs
 from policy_drafter.models import MAX_ITERATIONS_LIMIT, RunConfig, StopReason
 from policy_drafter.prompts import DRAFTER_ROLE, EVALUATOR_ROLE, RESEARCHER_ROLE
@@ -314,6 +315,43 @@ def test_tied_drafts_prefer_the_latest() -> None:
     state = run(llm, max_iterations=2)
 
     assert state.final_draft == "Newer."
+
+
+def test_a_markdown_wrapper_around_a_document_with_inner_code_blocks_is_removed() -> None:
+    inner = "# Policy\n\n```bash\necho hi\n```\n\nBody."
+    llm = ScriptedLLM.build(drafter=[f"```markdown\n{inner}\n```"], evaluator=[PASS])
+
+    assert run(llm).final_draft == inner
+
+
+def test_events_reach_the_sink_one_at_a_time() -> None:
+    llm = ScriptedLLM.build()
+    active = 0
+    overlaps = 0
+    guard = threading.Lock()
+
+    def sink(_event: ProgressEvent) -> None:
+        nonlocal active, overlaps
+        with guard:
+            active += 1
+            overlaps += active > 1
+        time.sleep(0.002)
+        with guard:
+            active -= 1
+
+    flow = DraftingFlow(llms=LLMs(evaluator=llm, worker=llm), on_event=sink)
+
+    def burst() -> None:
+        for _ in range(10):
+            flow.emit_token("x", DRAFTER_ROLE)
+
+    threads = [threading.Thread(target=burst) for _ in range(4)]
+    for thread in threads:
+        thread.start()
+    for thread in threads:
+        thread.join()
+
+    assert overlaps == 0
 
 
 def test_a_document_that_merely_starts_and_ends_with_code_blocks_is_left_alone() -> None:

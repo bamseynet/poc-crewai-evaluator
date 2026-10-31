@@ -4,6 +4,7 @@ A rubric is plain data, so a compliance team can change the quality bar without 
 agents. Scores are always on a 0-10 scale.
 """
 
+import re
 from functools import lru_cache
 from importlib import resources
 from typing import Annotated, Any
@@ -17,6 +18,12 @@ from pydantic import (
     ValidationError,
     model_validator,
 )
+
+
+def normalise_key(key: str) -> str:
+    """How the evaluator's criterion names are matched to rubric criteria."""
+    return re.sub(r"[^a-z0-9]+", "_", key.lower()).strip("_")
+
 
 Slug = Annotated[str, StringConstraints(pattern=r"^[a-z][a-z0-9_]*$")]
 Score = Annotated[float, Field(ge=0, le=10)]
@@ -49,6 +56,19 @@ class Rubric(BaseModel):
         ids = [criterion.id for criterion in self.criteria]
         if len(ids) != len(set(ids)):
             raise ValueError(f"duplicate criterion ids in rubric {self.id!r}")
+        return self
+
+    @model_validator(mode="after")
+    def _criterion_keys_are_unambiguous(self) -> "Rubric":
+        # The evaluator may refer to a criterion by id or by name, so no key may point at two.
+        owners: dict[str, str] = {}
+        for criterion in self.criteria:
+            for key in {normalise_key(criterion.id), normalise_key(criterion.name)}:
+                if owners.setdefault(key, criterion.id) != criterion.id:
+                    raise ValueError(
+                        f"ambiguous criterion {key!r} in rubric {self.id!r}: "
+                        f"it matches both {owners[key]!r} and {criterion.id!r}"
+                    )
         return self
 
     def threshold_for(self, criterion: Criterion, override: float | None = None) -> float:

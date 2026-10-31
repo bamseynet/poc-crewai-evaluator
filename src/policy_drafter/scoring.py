@@ -16,9 +16,9 @@ from typing import Any
 import json_repair
 from pydantic import BaseModel, computed_field
 
-from policy_drafter.rubrics import Criterion, Rubric
+from policy_drafter.rubrics import Criterion, Rubric, normalise_key
 
-_OPENING = re.compile(r"[{\[](?=\s*[\"{\[\]}])")
+_OPENING = re.compile(r"[{\[](?=\s*[\"'{\[\]}])")
 _FENCE = re.compile(r"```[a-zA-Z]*\s*(.*?)```", re.DOTALL)
 _FRACTION = re.compile(r"^(-?\d+(?:\.\d+)?)\s*(?:/|out of)\s*(\d+(?:\.\d+)?)$", re.IGNORECASE)
 _PERCENT = re.compile(r"^(-?\d+(?:\.\d+)?)\s*%$")
@@ -68,8 +68,8 @@ def parse_evaluation(raw: object, rubric: Rubric, threshold: float | None = None
     warnings: list[str] = []
     lookup: dict[str, Criterion] = {}
     for criterion in rubric.criteria:
-        lookup[_normalise(criterion.name)] = criterion
-        lookup[_normalise(criterion.id)] = criterion
+        lookup[normalise_key(criterion.name)] = criterion
+        lookup[normalise_key(criterion.id)] = criterion
 
     candidates = _candidates(raw) if isinstance(raw, str) else []
     attempts = [_match_entries(candidate, lookup) for candidate in candidates]
@@ -163,7 +163,7 @@ def _match_entries(
     found: dict[str, tuple[float | None, str]] = {}
     unknown: list[str] = []
     for key, value, feedback in _entries(payload):
-        matched = lookup.get(_normalise(key))
+        matched = lookup.get(normalise_key(key))
         if matched is None:
             unknown.append(key)
             continue
@@ -258,7 +258,3 @@ def _feedback(item: dict[str, Any]) -> str:
 
 def _first(item: dict[str, Any], keys: tuple[str, ...]) -> Any:
     return next((item[key] for key in keys if item.get(key) is not None), None)
-
-
-def _normalise(key: str) -> str:
-    return re.sub(r"[^a-z0-9]+", "_", key.lower()).strip("_")
