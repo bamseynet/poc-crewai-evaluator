@@ -334,3 +334,30 @@ def test_a_numeric_index_in_id_does_not_hide_the_criterion_name() -> None:
     )
 
     assert scores(raw) == {"scope": 8, "roles": 9}
+
+
+def test_an_unusable_duplicate_leaves_the_criterion_unscored() -> None:
+    raw = json.dumps(
+        {
+            "criteria": [
+                {"id": "scope", "score": 3},
+                {"id": "scope", "score": "n/a"},
+                {"id": "roles", "score": 9},
+            ]
+        }
+    )
+
+    assert scores(raw) == {"scope": None, "roles": 9}
+
+
+def test_unquoted_keys_are_recovered() -> None:
+    raw = "Here you go: {criteria: [{id: scope, score: 8}, {id: roles, score: 9}]}"
+
+    assert scores(raw) == {"scope": 8, "roles": 9}
+
+
+@pytest.mark.parametrize("value", ["8/10.", "8.", "8/10;"])
+def test_trailing_punctuation_on_a_score_is_ignored(value: str) -> None:
+    raw = json.dumps({"criteria": [{"id": "scope", "score": value}, {"id": "roles", "score": 9}]})
+
+    assert scores(raw)["scope"] == 8

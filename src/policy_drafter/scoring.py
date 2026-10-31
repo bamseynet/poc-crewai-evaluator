@@ -18,7 +18,7 @@ from pydantic import BaseModel, computed_field
 
 from policy_drafter.rubrics import Criterion, Rubric, normalise_key
 
-_OPENING = re.compile(r"[{\[](?=\s*[\"'{\[\]}])")
+_OPENING = re.compile(r"[{\[](?=\s*(?:[\"'{\[\]}]|\w+\s*:))")
 _FENCE = re.compile(r"```[a-zA-Z]*\s*(.*?)```", re.DOTALL)
 _FRACTION = re.compile(r"^(-?\d+(?:\.\d+)?)\s*(?:/|out of)\s*(\d+(?:\.\d+)?)$", re.IGNORECASE)
 _PERCENT = re.compile(r"^(-?\d+(?:\.\d+)?)\s*%$")
@@ -170,7 +170,8 @@ def _match_entries(
         score = _coerce_score(value)
         previous = found.get(matched.id)
         # When the evaluator scores a criterion twice, believe the less flattering score.
-        if previous is None or previous[0] is None or (score is not None and score < previous[0]):
+        # An unusable duplicate is the most ambiguous reading, so it leaves the criterion unscored.
+        if previous is None or score is None or (previous[0] is not None and score < previous[0]):
             found[matched.id] = (score, feedback)
     return found, unknown
 
@@ -229,7 +230,7 @@ def _coerce_score(value: Any) -> float | None:
             return _bare(float(value))
         except OverflowError:  # an integer too large for a float is far off the scale
             return None
-    return _score_from_text(value.strip()) if isinstance(value, str) else None
+    return _score_from_text(value.strip().rstrip(".;,").strip()) if isinstance(value, str) else None
 
 
 def _score_from_text(text: str) -> float | None:
