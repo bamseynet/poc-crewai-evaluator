@@ -269,7 +269,7 @@ def test_persistently_unparseable_evaluation_stops_honestly() -> None:
 
 def test_partial_evaluation_fails_closed_and_keeps_revising() -> None:
     partial = '{"criteria": [{"id": "plain_language", "score": 10, "feedback": "ok"}]}'
-    llm = ScriptedLLM.build(evaluator=[partial, PASS])
+    llm = ScriptedLLM.build(evaluator=[partial, partial, PASS])
 
     state = run(llm, max_iterations=3)
 
@@ -466,3 +466,35 @@ def test_a_sink_that_fails_after_the_run_finished_does_not_rewrite_the_outcome()
 
     assert state.stop_reason is StopReason.PASSED
     assert [event.type for event in seen].count("run_finished") == 1
+
+
+def test_a_mostly_unparseable_evaluation_is_retried_before_it_drives_a_revision() -> None:
+    partial = '{"criteria": [{"id": "plain_language", "score": 3, "feedback": "x"}]}'
+    llm = ScriptedLLM.build(evaluator=[partial, PASS])
+    events: list[ProgressEvent] = []
+
+    state = run(llm, max_iterations=3, events=events)
+
+    assert state.stop_reason is StopReason.PASSED
+    assert len(state.iterations) == 1
+    assert any(event.type == "evaluation_retried" for event in events)
+
+
+def test_a_failure_while_evaluating_the_first_draft_still_returns_that_draft() -> None:
+    llm = ScriptedLLM.build(drafter=["Only draft."], evaluator=[RuntimeError("throttled")])
+
+    state = run(llm)
+
+    assert state.stop_reason is StopReason.ERROR
+    assert state.final_draft == "Only draft."
+
+
+def test_a_sink_that_always_fails_does_not_make_run_drafting_raise() -> None:
+    llm = ScriptedLLM.build(drafter=["Draft one."], evaluator=[PASS])
+
+    def broken(_event: ProgressEvent) -> None:
+        raise BrokenPipeError("client went away")
+
+    state = run_drafting(config(), LLMs(evaluator=llm, worker=llm), on_event=broken)
+
+    assert state.stop_reason is StopReason.ERROR

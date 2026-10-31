@@ -141,7 +141,7 @@ class DraftingFlow(Flow[DraftingState]):
                 )
             )
             evaluation = parse_evaluation(result.raw, rubric, state.threshold)
-            if evaluation.parse_ok:
+            if all(score.score is not None for score in evaluation.scores):
                 break
             if attempt < _EVALUATOR_ATTEMPTS:
                 self._emit(
@@ -179,7 +179,11 @@ class DraftingFlow(Flow[DraftingState]):
             return
         self.state.stop_reason = StopReason.ERROR
         self.state.error = f"{type(error).__name__}: {error}"[:_MAX_ERROR_CHARS]
-        self._conclude()
+        try:
+            self._conclude()
+        # The sink may be what failed (a closed stream); the outcome is already on the state.
+        except Exception:
+            logger.exception("Could not announce the end of the run")
 
     def emit_token(self, text: str, agent_role: str | None) -> None:
         phase = _PHASE_BY_ROLE.get(agent_role or "")
@@ -191,7 +195,9 @@ class DraftingFlow(Flow[DraftingState]):
         self._concluded = True
         final = select_final(state.iterations)
         state.final_iteration = final.number if final else None
-        state.final_draft = final.draft if final else None
+        state.final_draft = final.draft if final else (state.draft or None)
+        if final is None and state.final_draft:
+            state.final_iteration = state.iteration
         self._emit(
             RunFinished(
                 stop_reason=state.stop_reason or StopReason.ERROR,

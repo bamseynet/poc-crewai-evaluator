@@ -71,15 +71,23 @@ def parse_rubric(text: str) -> Rubric:
         raise RubricError(f"invalid rubric: {exc}") from exc
 
 
-@lru_cache(maxsize=1)
-def _bundled_rubrics() -> dict[str, Rubric]:
+def _read_bundled() -> list[Rubric]:
     files = resources.files("policy_drafter") / "rubric_files"
-    rubrics = (
+    return [
         parse_rubric(path.read_text(encoding="utf-8"))
         for path in files.iterdir()
         if path.name.endswith(".yaml")
-    )
-    return {rubric.id: rubric for rubric in sorted(rubrics, key=lambda r: r.name)}
+    ]
+
+
+@lru_cache(maxsize=1)
+def _bundled_rubrics() -> dict[str, Rubric]:
+    loaded: dict[str, Rubric] = {}
+    for rubric in sorted(_read_bundled(), key=lambda r: r.name):
+        if rubric.id in loaded:
+            raise RubricError(f"duplicate rubric id: {rubric.id!r}")
+        loaded[rubric.id] = rubric
+    return loaded
 
 
 def list_rubrics() -> list[Rubric]:

@@ -121,7 +121,6 @@ def test_accepts_alternative_shapes(payload: object) -> None:
         ("80%", 8),
         ("Score: 6", 6),
         (-3, 0),
-        ("15/10", 10),
     ],
 )
 def test_normalises_score_values(value: object, expected: float) -> None:
@@ -132,7 +131,25 @@ def test_normalises_score_values(value: object, expected: float) -> None:
 
 @pytest.mark.parametrize(
     "value",
-    [None, "", "excellent", True, False, [], {}, "NaN", "Infinity", "8/0", 11, 85, "85", 1000],
+    [
+        None,
+        "",
+        "excellent",
+        True,
+        False,
+        [],
+        {},
+        "NaN",
+        "Infinity",
+        "8/0",
+        "15/10",
+        "100/10",
+        "150%",
+        11,
+        85,
+        "85",
+        1000,
+    ],
 )
 def test_unusable_score_values_fail_closed(value: object) -> None:
     raw = json.dumps({"criteria": [{"id": "scope", "score": value}, {"id": "roles", "score": 9}]})
@@ -257,3 +274,9 @@ def test_out_of_scale_scores_cannot_approve_a_draft() -> None:
     evaluation = parse_evaluation(raw, RUBRIC)
 
     assert not evaluation.all_passed
+
+
+def test_many_citation_brackets_in_the_preamble_do_not_hide_the_json() -> None:
+    raw = "Sources " + " ".join(f"[{n}]" for n in range(60)) + ": " + json.dumps(CLEAN)
+
+    assert scores(raw) == {"scope": 9, "roles": 5}

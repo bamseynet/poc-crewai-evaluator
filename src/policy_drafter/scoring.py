@@ -28,7 +28,7 @@ _ID_KEYS = ("id", "criterion_id", "criterion", "name", "key")
 _SCORE_KEYS = ("score", "rating", "value", "points")
 _FEEDBACK_KEYS = ("feedback", "comment", "comments", "rationale", "reason", "notes")
 
-_MAX_BRACKETS = 32
+_MAX_REPAIRS = 8
 _MAX_DEPTH = 4
 _MAX_FEEDBACK_CHARS = 4_000
 _MAX_SCORE = 10.0
@@ -131,13 +131,20 @@ def _candidates(text: str) -> list[Any]:
     fenced = _FENCE.search(text)
     body = (fenced.group(1) if fenced else text).strip()
     candidates = [_parse_strict(body)]
-    positions = [match.start() for match in re.finditer(r"[{\[]", body)][:_MAX_BRACKETS]
     decoder = json.JSONDecoder()
-    for position in positions:
+    skip_until = 0
+    repairs = 0
+    for match in re.finditer(r"[{\[]", body):
+        if match.start() < skip_until:
+            continue  # nested inside a value that already decoded
         try:
-            candidates.append(decoder.raw_decode(body, position)[0])
+            value, skip_until = decoder.raw_decode(body, match.start())
         except (ValueError, RecursionError):
-            candidates.append(_parse_lenient(body[position:]))
+            if repairs < _MAX_REPAIRS:
+                repairs += 1
+                candidates.append(_parse_lenient(body[match.start() :]))
+        else:
+            candidates.append(value)
     return [candidate for candidate in candidates if candidate is not None]
 
 
@@ -209,10 +216,12 @@ def _coerce_score(value: Any) -> float | None:
 
 def _score_from_text(text: str) -> float | None:
     if match := _FRACTION.match(text):
-        scale = float(match.group(2))
-        return _clamp(float(match.group(1)) / scale * _MAX_SCORE) if scale > 0 else None
+        numerator, scale = float(match.group(1)), float(match.group(2))
+        # "15/10" is a scale mix-up, not a perfect score.
+        return _clamp(numerator / scale * _MAX_SCORE) if scale > 0 and numerator <= scale else None
     if match := _PERCENT.match(text):
-        return _clamp(float(match.group(1)) / _MAX_SCORE)
+        percent = float(match.group(1))
+        return _clamp(percent / _MAX_SCORE) if percent <= 100 else None
     if match := _PLAIN.match(text):
         return _bare(float(match.group(1)))
     return None

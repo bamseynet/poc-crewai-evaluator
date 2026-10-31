@@ -2,6 +2,7 @@
 
 import pytest
 
+from policy_drafter import rubrics
 from policy_drafter.rubrics import (
     Rubric,
     RubricError,
@@ -108,3 +109,14 @@ def test_loads_each_bundled_rubric_by_id(rubric_id: str) -> None:
 def test_unknown_or_unsafe_rubric_ids_are_rejected(rubric_id: str) -> None:
     with pytest.raises(RubricError):
         load_rubric(rubric_id)
+
+
+def test_duplicate_bundled_rubric_ids_are_rejected(monkeypatch: pytest.MonkeyPatch) -> None:
+    twin = parse_rubric(VALID)
+    monkeypatch.setattr(rubrics, "_read_bundled", lambda: [twin, twin])
+    rubrics._bundled_rubrics.cache_clear()
+    try:
+        with pytest.raises(RubricError, match="duplicate"):
+            rubrics._bundled_rubrics()
+    finally:
+        rubrics._bundled_rubrics.cache_clear()
