@@ -30,7 +30,10 @@ function download(run: RunView) {
   const link = document.createElement("a");
   link.href = url;
   link.download = exportFilename(run);
+  // Some browsers only honour the click on an anchor that is in the document.
+  document.body.appendChild(link);
   link.click();
+  link.remove();
   // Some browsers start the download asynchronously, so the URL must outlive the click.
   setTimeout(() => URL.revokeObjectURL(url), 10_000);
 }

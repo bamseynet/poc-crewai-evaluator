@@ -1,5 +1,6 @@
 """The HTTP API. Start with `uvicorn policy_drafter.api:create_app --factory`."""
 
+import logging
 import secrets
 from collections.abc import AsyncIterable, AsyncIterator, Callable
 from contextlib import asynccontextmanager
@@ -17,6 +18,8 @@ from policy_drafter.models import RunConfig
 from policy_drafter.rubrics import list_rubrics
 from policy_drafter.runs import Run, RunManager, TooManyRunsError
 
+logger = logging.getLogger(__name__)
+
 
 class CreatedRun(BaseModel):
     id: str
@@ -31,6 +34,10 @@ def create_app(
         factory, max_concurrent=config.max_concurrent_runs, max_retained=config.max_retained_runs
     )
     token = config.api_access_token.get_secret_value() if config.api_access_token else ""
+    if config.llm_mode == "bedrock" and not token:
+        logger.warning(
+            "API_ACCESS_TOKEN is not set: anyone who can reach this API can start Bedrock runs."
+        )
 
     @asynccontextmanager
     async def lifespan(_app: FastAPI) -> AsyncIterator[None]:

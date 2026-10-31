@@ -281,3 +281,19 @@ def test_serves_the_built_ui_when_configured(tmp_path: Path) -> None:
     with TestClient(create_app(settings(web_dist=tmp_path))) as client:
         assert "Policy Drafter" in client.get("/").text
         assert client.get("/api/health").json() == {"status": "ok"}
+
+
+def test_a_blank_access_token_is_treated_as_unset_and_bedrock_mode_warns(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    settings = Settings(llm_mode="bedrock", api_access_token="  ")  # type: ignore[arg-type]
+
+    with caplog.at_level("WARNING"):
+        app = create_app(
+            settings,
+            llm_factory=lambda: LLMs(evaluator=ScriptedLLM.build(), worker=ScriptedLLM.build()),
+        )
+
+    assert settings.api_access_token is None
+    assert "API_ACCESS_TOKEN is not set" in caplog.text
+    assert app is not None

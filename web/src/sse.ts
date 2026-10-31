@@ -29,7 +29,9 @@ function parseBlock(block: string): SseMessage | null {
   const data: string[] = [];
   for (const line of block.split("\n")) {
     if (line.startsWith("id:")) {
-      id = Number(line.slice(3).trim());
+      const parsed = Number.parseInt(line.slice(3).trim(), 10);
+      // An id that is not a number must not become the Last-Event-ID the client resumes from.
+      if (Number.isFinite(parsed)) id = parsed;
     } else if (line.startsWith("data:")) {
       data.push(line.slice(5).replace(/^ /, ""));
     }

@@ -24,6 +24,12 @@ describe("SseParser", () => {
     expect(parser.feed("\n\r\n")).toEqual([{ id: 1, data: "a" }]);
   });
 
+  it("ignores an id that is not a number", () => {
+    const parser = new SseParser();
+
+    expect(parser.feed("id: abc\ndata: a\n\n")).toEqual([{ id: null, data: "a" }]);
+  });
+
   it("returns several messages from one chunk", () => {
     const parser = new SseParser();
 
