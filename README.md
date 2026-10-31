@@ -358,6 +358,11 @@ Found in review and deliberately left for later; none changes the result on norm
 - **Infra is never deployed.** `cdk synth` and the stack tests pass, but behaviours that need a real account are unverified: the CloudFront-to-ALB path through the managed prefix list (about 55 security-group rules, close to the default quota), and first-start timing. `GEOGRAPHIC_PROFILE` accepts `us|eu|au|jp|ca` inference-profile prefixes only, so `apac.`, `global.` and `us-gov.` profiles are rejected at synth time.
 - **Graceful shutdown** waits for in-flight runs; ECS sends SIGKILL after its stop timeout.
 - **A shared access token** is the only authentication. There is no per-user identity, quota or audit trail.
+- **Runs cannot be cancelled.** Aborting the stream (or starting another run in the UI) leaves the server-side run going, so it keeps spending model calls and holds a concurrency slot until it finishes. This is the most important gap before any shared deployment.
+- **Event ordering:** CrewAI may deliver a streamed token after the phase it belongs to has completed; the UI ignores such late tokens, but they stay in the server log.
+- **Failure before any evaluation** returns the unscored draft as the final draft; the export does not say it was never scored.
+- **Inference-profile Regions:** the IAM policy for `us.*` profiles covers the source Regions us-east-1, us-east-2 and us-west-2 only; deploying elsewhere needs the destination Regions set by hand.
+- **Default rubric differs** between the CLI (`completeness`) and the UI (first by name).
 
 ## Licence
 

@@ -84,19 +84,25 @@ export async function followRun(runId: string, options: FollowOptions): Promise<
 
       const parser = new SseParser();
       const reader = response.body.pipeThrough(new TextDecoderStream()).getReader();
-      for (;;) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        for (const message of parser.feed(value)) {
-          const event = JSON.parse(message.data) as ProgressEvent;
-          onEvent(event);
-          // Reset only once the event was handled, or a message that always fails to parse or
-          // apply would be replayed on every reconnect and never reach the retry limit.
-          failures = 0;
-          // Only after the event was delivered, so a failure here does not skip it on resume.
-          if (message.id !== null) lastEventId = message.id;
-          if (event.type === "run_finished") return;
+      try {
+        for (;;) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          for (const message of parser.feed(value)) {
+            const event = JSON.parse(message.data) as ProgressEvent;
+            onEvent(event);
+            // Reset only once the event was handled, or a message that always fails to parse or
+            // apply would be replayed on every reconnect and never reach the retry limit.
+            failures = 0;
+            // Only after the event was delivered, so a failure here does not skip it on resume.
+            if (message.id !== null) lastEventId = message.id;
+            if (event.type === "run_finished") return;
+          }
         }
+      } finally {
+        // Without this, a message that fails to parse leaves its connection open while the next
+        // attempt opens another.
+        reader.cancel().catch(() => undefined);
       }
     } catch (error) {
       if (signal.aborted) return;

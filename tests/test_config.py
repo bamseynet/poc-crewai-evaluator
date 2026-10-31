@@ -42,3 +42,8 @@ def test_rejects_an_unknown_mode(monkeypatch: pytest.MonkeyPatch) -> None:
 
     with pytest.raises(ValidationError):
         settings()
+
+
+def test_retention_must_cover_the_concurrent_runs() -> None:
+    with pytest.raises(ValueError, match="MAX_RETAINED_RUNS"):
+        Settings(max_concurrent_runs=4, max_retained_runs=2)
