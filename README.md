@@ -281,7 +281,7 @@ route. Routing depends on the source Region:
 aws bedrock get-inference-profile --region eu-west-1 \
   --inference-profile-identifier eu.anthropic.claude-opus-5-5 --query 'models[].modelArn'
 
-npm --prefix infra run cdk -- deploy \
+AWS_REGION=eu-west-1 npm --prefix infra run cdk -- deploy \
   -c modelId=eu.anthropic.claude-opus-5-5 -c workerModelId=eu.anthropic.claude-sonnet-5-5 \
   -c bedrockDestinationRegions=eu-central-1,eu-north-1,eu-south-1,eu-south-2,eu-west-1,eu-west-3
 ```

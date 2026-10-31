@@ -14,18 +14,24 @@ install: ## Install all dependencies
 	npm --prefix web ci
 	npm --prefix infra ci
 
-# npm writes this file on install, so a reinstall only happens when the lockfile changes.
-web/node_modules/.package-lock.json: web/package-lock.json
+# npm writes these files on install, so a reinstall only happens when a lockfile changes.
+WEB_DEPS := web/node_modules/.package-lock.json
+INFRA_DEPS := infra/node_modules/.package-lock.json
+
+$(WEB_DEPS): web/package-lock.json
 	npm --prefix web ci
 
-dev: web/node_modules/.package-lock.json ## Run the API and UI (fake LLM by default; LLM_MODE=bedrock for real models)
+$(INFRA_DEPS): infra/package-lock.json
+	npm --prefix infra ci
+
+dev: $(WEB_DEPS) ## Run the API and UI (fake LLM by default; LLM_MODE=bedrock for real models)
 	@trap 'kill 0' INT TERM EXIT; \
 	FAKE_LLM_DELAY_MS=$(FAKE_LLM_DELAY_MS) uv run uvicorn policy_drafter.api:create_app \
 		--factory --port $(API_PORT) --timeout-graceful-shutdown 1 & \
 	API_PORT=$(API_PORT) npm --prefix web run dev -- --port $(WEB_PORT) --strictPort & \
 	wait
 
-lint: ## Lint and check formatting
+lint: $(WEB_DEPS) $(INFRA_DEPS) ## Lint and check formatting
 	uv run ruff check .
 	uv run ruff format --check .
 	npm --prefix web run lint
@@ -35,23 +41,23 @@ format: ## Apply formatting and safe lint fixes
 	uv run ruff check --fix .
 	uv run ruff format .
 
-typecheck: ## Type check Python and TypeScript
+typecheck: $(WEB_DEPS) $(INFRA_DEPS) ## Type check Python and TypeScript
 	uv run mypy
 	npm --prefix web run typecheck
 	npm --prefix infra run typecheck
 
-test: ## Run the tests, which are all offline
+test: $(WEB_DEPS) $(INFRA_DEPS) ## Run the tests, which are all offline
 	uv run pytest
 	npm --prefix web test
 	npm --prefix infra test
 
-build: ## Build the web UI
+build: $(WEB_DEPS) ## Build the web UI
 	npm --prefix web run build
 
-synth: ## Synthesize the CDK stack, which needs no AWS access
+synth: $(INFRA_DEPS) ## Synthesize the CDK stack, which needs no AWS access
 	npm --prefix infra run synth
 
-deploy: ## Deploy to the current AWS account. Costs money. See the README first
+deploy: $(INFRA_DEPS) ## Deploy to the current AWS account. Costs money. See the README first
 	npm --prefix infra run cdk -- deploy
 
 check: lint typecheck test build synth ## Everything CI runs
