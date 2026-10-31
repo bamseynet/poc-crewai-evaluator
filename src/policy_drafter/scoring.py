@@ -203,16 +203,16 @@ def _entries(payload: Any, depth: int = 0) -> Iterator[tuple[str, Any, str]]:
     if not isinstance(payload, dict):
         return
 
+    for container in _CONTAINER_KEYS:
+        if isinstance(payload.get(container), list | dict):
+            yield from _entries(payload[container], depth + 1)
+            return
+
     # A lone entry rather than a list of them: {"id": "clarity", "score": 8, ...}.
     lone_key = _first(payload, _ID_KEYS)
     if isinstance(lone_key, str) and _first(payload, _SCORE_KEYS) is not None:
         yield lone_key, _first(payload, _SCORE_KEYS), _feedback(payload)
         return
-
-    for container in _CONTAINER_KEYS:
-        if isinstance(payload.get(container), list | dict):
-            yield from _entries(payload[container], depth + 1)
-            return
 
     for key, value in payload.items():
         if isinstance(value, dict):

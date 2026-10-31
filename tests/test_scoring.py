@@ -315,3 +315,9 @@ def test_a_single_bare_entry_is_read_as_one_criterion() -> None:
     assert scope.score == 8
     assert scope.feedback == "Fine."
     assert roles.score is None
+
+
+def test_a_wrapper_object_with_its_own_score_still_yields_its_criteria() -> None:
+    raw = json.dumps({"name": "Draft review", "score": 7, **CLEAN})
+
+    assert scores(raw) == {"scope": 9, "roles": 5}

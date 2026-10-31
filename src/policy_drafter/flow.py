@@ -93,7 +93,7 @@ class DraftingFlow(Flow[DraftingState]):
     _skip_auto_memory: bool = PrivateAttr(default=True)
     _concluded: bool = PrivateAttr(default=False)
     # Tokens arrive on CrewAI's streaming thread and everything else on the flow's.
-    _emit_lock: threading.Lock = PrivateAttr(default_factory=threading.Lock)
+    _emit_lock: threading.RLock = PrivateAttr(default_factory=threading.RLock)
 
     @start()
     def begin(self) -> None:
@@ -247,7 +247,7 @@ def _clean_draft(raw: str) -> str:
     language, body = match.groups()
     # A fence tagged markdown is a wrapper whatever it contains. An untagged one is only a
     # wrapper when no code block sits inside, as a document may open and close with its own.
-    if language.lower() in {"markdown", "md"} or "\n```" not in body:
+    if language.lower() in {"markdown", "md"} or (not language and "\n```" not in body):
         return body.strip()
     return text
 

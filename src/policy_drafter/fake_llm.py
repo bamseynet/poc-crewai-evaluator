@@ -14,7 +14,7 @@ from typing import Any
 
 from crewai.llms.base_llm import BaseLLM, llm_call_context
 
-from policy_drafter.prompts import DRAFTER_ROLE, EVALUATOR_ROLE, RESEARCHER_ROLE
+from policy_drafter.prompts import DRAFTER_ROLE, EVALUATOR_ROLE, NO_PREVIOUS_DRAFT, RESEARCHER_ROLE
 
 _RUBRIC_LINE = re.compile(r"^- `(\w+)` \((.+?)\): (.+)$", re.MULTILINE)
 _FEEDBACK_LINE = re.compile(r"^- \[(\w+)\] (.+?) \(.+?\): (.+)$", re.MULTILINE)
@@ -99,7 +99,7 @@ def _research(prompt: str) -> str:
 
 def _draft(prompt: str) -> str:
     previous = _section(prompt, "previous_draft")
-    if not previous or previous.startswith("None."):
+    if not previous or previous == NO_PREVIOUS_DRAFT:
         return _FIRST_DRAFT.format(request=_section(prompt, "request"))
 
     sections = [previous]

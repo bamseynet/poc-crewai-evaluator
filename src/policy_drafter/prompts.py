@@ -13,7 +13,7 @@ DRAFTER_ROLE = "Policy Drafter"
 EVALUATOR_ROLE = "Compliance Evaluator"
 
 NO_FEEDBACK = "None. This is the first draft."
-NO_PREVIOUS_DRAFT = "None. This is the first draft."
+NO_PREVIOUS_DRAFT = "(There is no previous draft: write the first one.)"
 
 RESEARCH_TASK = """\
 Prepare research notes that a policy drafter will rely on.
@@ -101,13 +101,18 @@ def render_rubric(rubric: Rubric) -> str:
     )
 
 
+def _one_line(text: str) -> str:
+    """Evaluator text is model output: keep it on one line and unable to close a prompt tag."""
+    return " ".join(text.split()).replace("<", "&lt;")
+
+
 def render_feedback(evaluation: Evaluation) -> str:
     """What the drafter is told to fix: the failing criteria only."""
     lines = []
     for score in evaluation.failing:
         scored = f"{score.score:g}" if score.score is not None else "not scored"
         lines.append(
-            f"- [{score.criterion_id}] {score.name} ({scored}, needs {score.threshold:g}): "
-            f"{score.feedback}"
+            f"- [{score.criterion_id}] {_one_line(score.name)} "
+            f"({scored}, needs {score.threshold:g}): {_one_line(score.feedback) or 'no detail'}"
         )
     return "\n".join(lines) or NO_FEEDBACK

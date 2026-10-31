@@ -373,6 +373,34 @@ def test_a_failed_evaluator_retry_keeps_the_earlier_reading() -> None:
     assert state.iterations[0].evaluation.scores[0].score == 3
 
 
+def test_a_draft_that_is_entirely_a_yaml_block_keeps_its_fence() -> None:
+    document = "```yaml\nkey: value\n```"
+    llm = ScriptedLLM.build(drafter=[document], evaluator=[PASS])
+
+    assert run(llm).final_draft == document
+
+
+def test_a_sink_that_emits_again_does_not_deadlock() -> None:
+    llm = ScriptedLLM.build(drafter=["Draft."], evaluator=[PASS])
+    flow_holder: list[DraftingFlow] = []
+
+    def sink(event: ProgressEvent) -> None:
+        if event.type == "run_started":
+            flow_holder[0].emit_token("x", DRAFTER_ROLE)
+
+    flow = DraftingFlow(llms=LLMs(evaluator=llm, worker=llm), on_event=sink)
+    flow_holder.append(flow)
+    done = threading.Event()
+
+    def go() -> None:
+        flow.kickoff(inputs=config().model_dump())
+        done.set()
+
+    threading.Thread(target=go, daemon=True).start()
+
+    assert done.wait(60)
+
+
 def test_a_document_that_merely_starts_and_ends_with_code_blocks_is_left_alone() -> None:
     document = "```\nfirst\n```\n\nProse between.\n\n```\nlast\n```"
     llm = ScriptedLLM.build(drafter=[document], evaluator=[PASS])
