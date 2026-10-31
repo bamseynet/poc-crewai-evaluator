@@ -134,20 +134,26 @@ class DraftingFlow(Flow[DraftingState]):
         rubric = load_rubric(state.rubric_id)
         self._emit(PhaseStarted(iteration=state.iteration, phase="evaluate"))
 
+        evaluation: Evaluation | None = None
         for attempt in range(1, _EVALUATOR_ATTEMPTS + 1):
             result = kickoff(
                 build_evaluator_crew(
                     self.llms, request=state.request, rubric=rubric, draft=state.draft
                 )
             )
-            evaluation = parse_evaluation(result.raw, rubric, state.threshold)
-            if all(score.score is not None for score in evaluation.scores):
+            latest = parse_evaluation(result.raw, rubric, state.threshold)
+            # A retry must never replace a better reading with a worse one.
+            if evaluation is None or _scored(latest) > _scored(evaluation):
+                evaluation = latest
+            if _scored(evaluation) == len(evaluation.scores):
                 break
             if attempt < _EVALUATOR_ATTEMPTS:
                 self._emit(
                     EvaluationRetried(iteration=state.iteration, warnings=evaluation.warnings)
                 )
 
+        if evaluation is None:
+            raise RuntimeError("the evaluator was never run")
         state.iterations.append(
             IterationRecord(
                 number=state.iteration,
@@ -217,11 +223,19 @@ class DraftingFlow(Flow[DraftingState]):
         self.on_event(event)
 
 
+def _scored(evaluation: Evaluation) -> int:
+    return sum(1 for score in evaluation.scores if score.score is not None)
+
+
 def _clean_draft(raw: str) -> str:
     """Remove the code fence that models sometimes wrap a Markdown document in."""
     text = raw.strip()
     match = _WRAPPING_FENCE.match(text)
-    return match.group(1).strip() if match else text
+    # Only unwrap when the fence is the outer wrapper: a document that opens and closes with
+    # its own code blocks has fence lines inside as well.
+    if match and "\n```" not in match.group(1):
+        return match.group(1).strip()
+    return text
 
 
 def run_drafting(

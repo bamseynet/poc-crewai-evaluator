@@ -316,6 +316,13 @@ def test_tied_drafts_prefer_the_latest() -> None:
     assert state.final_draft == "Newer."
 
 
+def test_a_document_that_merely_starts_and_ends_with_code_blocks_is_left_alone() -> None:
+    document = "```\nfirst\n```\n\nProse between.\n\n```\nlast\n```"
+    llm = ScriptedLLM.build(drafter=[document], evaluator=[PASS])
+
+    assert run(llm).final_draft == document
+
+
 @pytest.mark.parametrize(
     "reply",
     [
@@ -498,3 +505,13 @@ def test_a_sink_that_always_fails_does_not_make_run_drafting_raise() -> None:
     state = run_drafting(config(), LLMs(evaluator=llm, worker=llm), on_event=broken)
 
     assert state.stop_reason is StopReason.ERROR
+
+
+def test_a_garbage_retry_does_not_replace_a_usable_partial_evaluation() -> None:
+    partial = '{"criteria": [{"id": "plain_language", "score": 3, "feedback": "x"}]}'
+    llm = ScriptedLLM.build(evaluator=[partial, "no json at all", PASS])
+
+    state = run(llm, max_iterations=3)
+
+    assert state.iterations[0].evaluation.parse_ok
+    assert state.iterations[0].evaluation.scores[0].score == 3

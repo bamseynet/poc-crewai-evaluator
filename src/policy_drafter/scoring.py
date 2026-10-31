@@ -18,6 +18,7 @@ from pydantic import BaseModel, computed_field
 
 from policy_drafter.rubrics import Criterion, Rubric
 
+_OPENING = re.compile(r"[{\[](?=\s*[\"{\[\]}])")
 _FENCE = re.compile(r"```[a-zA-Z]*\s*(.*?)```", re.DOTALL)
 _FRACTION = re.compile(r"^(-?\d+(?:\.\d+)?)\s*(?:/|out of)\s*(\d+(?:\.\d+)?)$", re.IGNORECASE)
 _PERCENT = re.compile(r"^(-?\d+(?:\.\d+)?)\s*%$")
@@ -128,24 +129,32 @@ def _candidates(text: str) -> list[Any]:
     bracket in the preamble ("per policy [1], ...") or a truncated tail from hiding the real
     evaluation.
     """
-    fenced = _FENCE.search(text)
-    body = (fenced.group(1) if fenced else text).strip()
-    candidates = [_parse_strict(body)]
+    fences = [match.group(1).strip() for match in _FENCE.finditer(text)]
+    candidates: list[Any] = []
+    # The whole reply goes first so that fences quoted from the draft cannot outrank it.
+    for body in [text.strip(), *fences]:
+        candidates.append(_parse_strict(body))
+        candidates.extend(_scan_brackets(body))
+    return [candidate for candidate in candidates if candidate is not None]
+
+
+def _scan_brackets(body: str) -> Iterator[Any]:
     decoder = json.JSONDecoder()
     skip_until = 0
     repairs = 0
-    for match in re.finditer(r"[{\[]", body):
+    for match in _OPENING.finditer(body):
         if match.start() < skip_until:
             continue  # nested inside a value that already decoded
         try:
             value, skip_until = decoder.raw_decode(body, match.start())
         except (ValueError, RecursionError):
+            # Only brackets that look like the start of JSON are worth a repair attempt, so
+            # prose fragments such as "[1]" or "{x" cannot use up the budget.
             if repairs < _MAX_REPAIRS:
                 repairs += 1
-                candidates.append(_parse_lenient(body[match.start() :]))
+                yield _parse_lenient(body[match.start() :])
         else:
-            candidates.append(value)
-    return [candidate for candidate in candidates if candidate is not None]
+            yield value
 
 
 def _match_entries(

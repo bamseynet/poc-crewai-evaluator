@@ -280,3 +280,17 @@ def test_many_citation_brackets_in_the_preamble_do_not_hide_the_json() -> None:
     raw = "Sources " + " ".join(f"[{n}]" for n in range(60)) + ": " + json.dumps(CLEAN)
 
     assert scores(raw) == {"scope": 9, "roles": 5}
+
+
+def test_a_quoted_snippet_in_the_first_fence_does_not_hide_the_real_json() -> None:
+    quoted = "The draft says:\n```\nsee [1] and {x}\n```\n"
+    raw = f"{quoted}My evaluation:\n```json\n{json.dumps(CLEAN)}\n```"
+
+    assert scores(raw) == {"scope": 9, "roles": 5}
+
+
+def test_many_stray_fragments_do_not_exhaust_the_repair_budget() -> None:
+    broken = json.dumps(CLEAN).replace("}]", "},]")  # trailing comma needs repair
+    raw = " ".join(["[1] {x}"] * 20) + " " + broken
+
+    assert scores(raw) == {"scope": 9, "roles": 5}
